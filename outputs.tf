@@ -160,5 +160,5 @@ output "node_groups" {
 
 output "eks_sg" {
   description = "TMP CNI SG"
-  value = aws_eks_cluster.this[0].vpc_config[0].arn
+  value = aws_eks_cluster.this[0].vpc_config.arn
 }
