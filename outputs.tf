@@ -160,5 +160,5 @@ output "node_groups" {
 
 output "eks_sg" {
   description = "TMP CNI SG"
-  value = aws_eks_cluster.this[0].vpc_config.arn
+  value = concat(aws_eks_cluster.this[0].vpc_config[*].cluster_security_group_id, [""])[0]
 }
