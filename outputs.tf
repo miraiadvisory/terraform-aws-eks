@@ -157,3 +157,8 @@ output "node_groups" {
   description = "Outputs from EKS node groups. Map of maps, keyed by var.node_groups keys"
   value       = module.node_groups.node_groups
 }
+
+output "eks_sg" {
+  description = "TMP CNI SG"
+  value = concat(aws_eks_cluster.this.vpc_config[*].cluster_security_group_id, [""])[0]
+}
