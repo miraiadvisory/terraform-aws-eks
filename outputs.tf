@@ -160,5 +160,5 @@ output "node_groups" {
 
 output "eks_sg" {
   description = "TMP CNI SG"
-  value = element(concat(aws_eks_cluster.this[*].vpc_config[*].arn, list("")), 0)
+  value = element(concat(aws_eks_cluster.this[0].vpc_config[*].arn, list("")), 0)
 }
