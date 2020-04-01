@@ -6,6 +6,7 @@ locals {
       iam_role_arn     = var.default_iam_role_arn
       instance_type    = var.workers_group_defaults["instance_type"]
       key_name         = var.workers_group_defaults["key_name"]
+      desired_capacity = var.workers_group_defaults["asg_desired_capacity"]
       max_capacity     = var.workers_group_defaults["asg_max_size"]
       min_capacity     = var.workers_group_defaults["asg_min_size"]
       subnets          = var.workers_group_defaults["subnets"]
