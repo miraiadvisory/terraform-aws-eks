@@ -13,3 +13,64 @@ resource "aws_iam_openid_connect_provider" "oidc_provider" {
   thumbprint_list = [var.eks_oidc_root_ca_thumbprint]
   url             = flatten(concat(aws_eks_cluster.this[*].identity[*].oidc.0.issuer, [""]))[0]
 }
+
+
+####Autoscaler policy removed in 9.0
+
+module "iam_assumable_role_admin" {
+  source                        = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+  version                       = "~> v2.6.0"
+  create_role                   = true
+  role_name                     = "cluster-autoscaler"
+  provider_url                  = replace(flatten(concat(aws_eks_cluster.this[*].identity[*].oidc.0.issuer, [""]))[0], "https://", "")
+  role_policy_arns              = [aws_iam_policy.cluster_autoscaler.arn]
+  oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:cluster-autoscaler-aws-cluster-autoscaler"]
+}
+
+resource "aws_iam_policy" "cluster_autoscaler" {
+  name_prefix = "cluster-autoscaler"
+  description = "EKS cluster-autoscaler policy for cluster ${aws_eks_cluster.this[0].id}"
+  policy      = data.aws_iam_policy_document.cluster_autoscaler.json
+}
+
+data "aws_iam_policy_document" "cluster_autoscaler" {
+  statement {
+    sid    = "clusterAutoscalerAll"
+    effect = "Allow"
+
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeTags",
+      "ec2:DescribeLaunchTemplateVersions",
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "clusterAutoscalerOwn"
+    effect = "Allow"
+
+    actions = [
+      "autoscaling:SetDesiredCapacity",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "autoscaling:UpdateAutoScalingGroup",
+    ]
+
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "autoscaling:ResourceTag/kubernetes.io/cluster/${aws_eks_cluster.this[0].id}"
+      values   = ["owned"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/enabled"
+      values   = ["true"]
+    }
+  }
+}
