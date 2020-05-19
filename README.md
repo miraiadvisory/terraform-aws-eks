@@ -15,6 +15,12 @@ Read the [AWS docs on EKS to get connected to the k8s dashboard](https://docs.aw
 * You want these resources to exist within security groups that allow communication and coordination. These can be user provided or created within the module.
 * You've created a Virtual Private Cloud (VPC) and subnets where you intend to put the EKS resources. The VPC satisfies [EKS requirements](https://docs.aws.amazon.com/eks/latest/userguide/network_reqs.html).
 
+## Important note
+
+The default `cluster_version`is now 1.16. Kubernetes 1.16 includes a number of deprecated API removals, and you need to ensure your applications and add ons are updated, or workloads could fail after the upgrade is complete. For more information on the API removals, see the [Kubernetes blog post](https://kubernetes.io/blog/2019/07/18/api-deprecations-in-1-16/). For action you may need to take before upgrading, see the steps in the [EKS documentation](https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html#1-16-prequisites).
+
+Please set explicitly your `cluster_version` to an older EKS version until your workloads are ready for Kubernetes 1.16.
+
 ## Usage example
 
 A full example leveraging other community modules is contained in the [examples/basic directory](https://github.com/terraform-aws-modules/terraform-aws-eks/tree/master/examples/basic).
@@ -39,7 +45,7 @@ provider "kubernetes" {
 module "my-cluster" {
   source          = "terraform-aws-modules/eks/aws"
   cluster_name    = "my-cluster"
-  cluster_version = "1.14"
+  cluster_version = "1.16"
   subnets         = ["subnet-abcde012", "subnet-bcde012a", "subnet-fghi345a"]
   vpc_id          = "vpc-1234556abcdef"
 
@@ -124,21 +130,31 @@ Many thanks to [the contributors listed here](https://github.com/terraform-aws-m
 MIT Licensed. See [LICENSE](https://github.com/terraform-aws-modules/terraform-aws-eks/tree/master/LICENSE) for full details.
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+## Requirements
+
+| Name | Version |
+|------|---------|
+| terraform | >= 0.12.9 |
+| aws | >= 2.52.0 |
+| kubernetes | >= 1.11.1 |
+| local | >= 1.4 |
+| null | >= 2.1 |
+| random | >= 2.1 |
+
 ## Providers
 
 | Name | Version |
 |------|---------|
 | aws | >= 2.52.0 |
 | kubernetes | >= 1.11.1 |
-| local | >= 1.2 |
+| local | >= 1.4 |
 | null | >= 2.1 |
 | random | >= 2.1 |
-| template | >= 2.1 |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:-----:|
+|------|-------------|------|---------|:--------:|
 | attach\_worker\_cni\_policy | Whether to attach the Amazon managed `AmazonEKS_CNI_Policy` IAM policy to the default worker IAM role. WARNING: If set `false` the permissions must be assigned to the `aws-node` DaemonSet pods via another method or nodes will not be able to join the cluster. | `bool` | `true` | no |
 | cluster\_create\_security\_group | Whether to create a security group for the cluster or attach the cluster to `cluster_security_group_id`. | `bool` | `true` | no |
 | cluster\_create\_timeout | Timeout value when creating the EKS cluster. | `string` | `"30m"` | no |
@@ -154,7 +170,7 @@ MIT Licensed. See [LICENSE](https://github.com/terraform-aws-modules/terraform-a
 | cluster\_log\_retention\_in\_days | Number of days to retain log events. Default retention - 90 days. | `number` | `90` | no |
 | cluster\_name | Name of the EKS cluster. Also used as a prefix in names of related resources. | `string` | n/a | yes |
 | cluster\_security\_group\_id | If provided, the EKS cluster will be attached to this security group. If not given, a security group will be created with necessary ingress/egress to work with the workers | `string` | `""` | no |
-| cluster\_version | Kubernetes version to use for the EKS cluster. | `string` | `"1.15"` | no |
+| cluster\_version | Kubernetes version to use for the EKS cluster. | `string` | `"1.16"` | no |
 | config\_output\_path | Where to save the Kubectl config file (if `write_kubeconfig = true`). Assumed to be a directory if the value ends with a forward slash `/`. | `string` | `"./"` | no |
 | create\_eks | Controls if EKS resources should be created (it affects almost all resources) | `bool` | `true` | no |
 | eks\_oidc\_root\_ca\_thumbprint | Thumbprint of Root CA for EKS OIDC, Valid until 2037 | `string` | `"9e99a48a9960b14926bb7f3b02e22da2b0ab7280"` | no |
@@ -173,11 +189,11 @@ MIT Licensed. See [LICENSE](https://github.com/terraform-aws-modules/terraform-a
 | map\_users | Additional IAM users to add to the aws-auth configmap. See examples/basic/variables.tf for example format. | <pre>list(object({<br>    userarn  = string<br>    username = string<br>    groups   = list(string)<br>  }))</pre> | `[]` | no |
 | node\_groups | Map of map of node groups to create. See `node_groups` module's documentation for more details | `any` | `{}` | no |
 | node\_groups\_defaults | Map of values to be applied to all node groups. See `node_groups` module's documentaton for more details | `any` | `{}` | no |
-| permissions\_boundary | If provided, all IAM roles will be created with this permissions boundary attached. | `string` | n/a | yes |
+| permissions\_boundary | If provided, all IAM roles will be created with this permissions boundary attached. | `string` | `null` | no |
 | subnets | A list of subnets to place the EKS cluster and workers within. | `list(string)` | n/a | yes |
 | tags | A map of tags to add to all resources. | `map(string)` | `{}` | no |
 | vpc\_id | VPC where the cluster and workers will be deployed. | `string` | n/a | yes |
-| wait\_for\_cluster\_cmd | Custom local-exec command to execute for determining if the eks cluster is healthy. Cluster endpoint will be available as an environment variable called ENDPOINT | `string` | `"for i in `seq 1 60`; do wget --no-check-certificate -O - -q $ENDPOINT/healthz \u003e/dev/null \u0026\u0026 exit 0 \|\| true; sleep 5; done; echo TIMEOUT \u0026\u0026 exit 1"` | no |
+| wait\_for\_cluster\_cmd | Custom local-exec command to execute for determining if the eks cluster is healthy. Cluster endpoint will be available as an environment variable called ENDPOINT | `string` | `"for i in `seq 1 60`; do wget --no-check-certificate -O - -q $ENDPOINT/healthz \u003e/dev/null \u0026\u0026 exit 0 || true; sleep 5; done; echo TIMEOUT \u0026\u0026 exit 1"` | no |
 | wait\_for\_cluster\_interpreter | Custom local-exec command line interpreter for the command to determining if the eks cluster is healthy. | `list(string)` | <pre>[<br>  "/bin/sh",<br>  "-c"<br>]</pre> | no |
 | worker\_additional\_security\_group\_ids | A list of additional security group ids to attach to worker instances | `list(string)` | `[]` | no |
 | worker\_ami\_name\_filter | Name filter for AWS EKS worker AMI. If not provided, the latest official AMI for the specified 'cluster\_version' is used. | `string` | `""` | no |
@@ -207,7 +223,8 @@ MIT Licensed. See [LICENSE](https://github.com/terraform-aws-modules/terraform-a
 | cluster\_iam\_role\_name | IAM role name of the EKS cluster. |
 | cluster\_id | The name/id of the EKS cluster. |
 | cluster\_oidc\_issuer\_url | The URL on the EKS cluster OIDC Issuer |
-| cluster\_security\_group\_id | Security group ID attached to the EKS cluster. |
+| cluster\_primary\_security\_group\_id | The cluster primary security group ID created by the EKS cluster on 1.14 or later. Referred to as 'Cluster security group' in the EKS console. |
+| cluster\_security\_group\_id | Security group ID attached to the EKS cluster. On 1.14 or later, this is the 'Additional security groups' in the EKS console. |
 | cluster\_version | The Kubernetes server version for the EKS cluster. |
 | config\_map\_aws\_auth | A kubernetes configuration to authenticate to this EKS cluster. |
 | kubeconfig | kubectl config file contents for this EKS cluster. |
