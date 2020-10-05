@@ -1,6 +1,9 @@
 output "cluster_id" {
-  description = "The name/id of the EKS cluster."
+  description = "The name/id of the EKS cluster. Will block on cluster creation until the cluster is really ready"
   value       = element(concat(aws_eks_cluster.this.*.id, list("")), 0)
+  # So that calling plans wait for the cluster to be available before attempting
+  # to use it. They will not need to duplicate this null_resource
+  depends_on = [null_resource.wait_for_cluster]
 }
 
 output "cluster_arn" {
@@ -50,7 +53,7 @@ output "cluster_oidc_issuer_url" {
 
 output "cluster_primary_security_group_id" {
   description = "The cluster primary security group ID created by the EKS cluster on 1.14 or later. Referred to as 'Cluster security group' in the EKS console."
-  value       = var.cluster_version >= 1.14 ? element(concat(aws_eks_cluster.this[*].vpc_config[0].cluster_security_group_id, list("")), 0) : null
+  value       = local.cluster_primary_security_group_id
 }
 
 output "cloudwatch_log_group_name" {
@@ -92,8 +95,8 @@ output "workers_asg_names" {
 output "workers_user_data" {
   description = "User data of worker groups"
   value = concat(
-    local.userdata,
-    local.launch_template_userdata,
+    data.template_file.userdata.*.rendered,
+    data.template_file.launch_template_userdata.*.rendered,
   )
 }
 
@@ -163,7 +166,7 @@ output "node_groups" {
   value       = module.node_groups.node_groups
 }
 
-output "eks_sg" {
-  description = "TMP CNI SG"
-  value = concat(aws_eks_cluster.this[0].vpc_config[*].cluster_security_group_id, [""])[0]
+output "security_group_rule_cluster_https_worker_ingress" {
+  description = "Security group rule responsible for allowing pods to communicate with the EKS cluster API."
+  value       = aws_security_group_rule.cluster_https_worker_ingress
 }

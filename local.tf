@@ -6,12 +6,14 @@ locals {
       "value", element(values(var.tags), index(keys(var.tags), item)),
       "propagate_at_launch", "true"
     )
+    if item != "Name"
   ]
 
-  cluster_security_group_id = var.cluster_create_security_group ? join("", aws_security_group.cluster.*.id) : var.cluster_security_group_id
-  cluster_iam_role_name     = var.manage_cluster_iam_resources ? join("", aws_iam_role.cluster.*.name) : var.cluster_iam_role_name
-  cluster_iam_role_arn      = var.manage_cluster_iam_resources ? join("", aws_iam_role.cluster.*.arn) : join("", data.aws_iam_role.custom_cluster_iam_role.*.arn)
-  worker_security_group_id  = var.worker_create_security_group ? join("", aws_security_group.workers.*.id) : var.worker_security_group_id
+  cluster_security_group_id         = var.cluster_create_security_group ? join("", aws_security_group.cluster.*.id) : var.cluster_security_group_id
+  cluster_primary_security_group_id = var.cluster_version >= 1.14 ? element(concat(aws_eks_cluster.this[*].vpc_config[0].cluster_security_group_id, list("")), 0) : null
+  cluster_iam_role_name             = var.manage_cluster_iam_resources ? join("", aws_iam_role.cluster.*.name) : var.cluster_iam_role_name
+  cluster_iam_role_arn              = var.manage_cluster_iam_resources ? join("", aws_iam_role.cluster.*.arn) : join("", data.aws_iam_role.custom_cluster_iam_role.*.arn)
+  worker_security_group_id          = var.worker_create_security_group ? join("", aws_security_group.workers.*.id) : var.worker_security_group_id
 
   default_iam_role_id    = concat(aws_iam_role.workers.*.id, [""])[0]
   default_ami_id_linux   = coalesce(local.workers_group_defaults.ami_id, data.aws_ami.eks_worker.id)
@@ -29,6 +31,7 @@ locals {
   )
 
   ec2_principal = "ec2.${data.aws_partition.current.dns_suffix}"
+  sts_principal = "sts.${data.aws_partition.current.dns_suffix}"
 
   policy_arn_prefix = "arn:${data.aws_partition.current.partition}:iam::aws:policy"
   workers_group_defaults_defaults = {
@@ -50,7 +53,7 @@ locals {
     root_volume_size              = "100"                       # root volume size of workers instances.
     root_volume_type              = "gp2"                       # root volume type of workers instances, can be 'standard', 'gp2', or 'io1'
     root_iops                     = "0"                         # The amount of provisioned IOPS. This must be set with a volume_type of "io1".
-    key_name                      = ""                          # The key name that should be used for the instances in the autoscaling group
+    key_name                      = ""                          # The key pair name that should be used for the instances in the autoscaling group
     pre_userdata                  = ""                          # userdata to pre-append to the default userdata.
     userdata_template_file        = ""                          # alternate template to use for userdata
     userdata_template_extra_args  = {}                          # Additional arguments to use when expanding the userdata template file
@@ -67,6 +70,7 @@ locals {
     iam_role_id                   = "local.default_iam_role_id" # A custom IAM role id. Incompatible with iam_instance_profile_name.  Literal local.default_iam_role_id will never be used but if iam_role_id is not set, the local.default_iam_role_id interpolation will be used.
     suspended_processes           = ["AZRebalance"]             # A list of processes to suspend. i.e. ["AZRebalance", "HealthCheck", "ReplaceUnhealthy"]
     target_group_arns             = null                        # A list of Application LoadBalancer (ALB) target group ARNs to be associated to the autoscaling group
+    load_balancers                = null                        # A list of Classic LoadBalancer (CLB)'s name to be associated to the autoscaling group
     enabled_metrics               = []                          # A list of metrics to be collected i.e. ["GroupMinSize", "GroupMaxSize", "GroupDesiredCapacity"]
     placement_group               = null                        # The name of the placement group into which to launch the instances, if any.
     service_linked_role_arn       = ""                          # Arn of custom service linked role that Auto Scaling group will use. Useful when you have encrypted EBS
@@ -74,15 +78,18 @@ locals {
     platform                      = "linux"                     # Platform of workers. either "linux" or "windows"
     additional_ebs_volumes        = []                          # A list of additional volumes to be attached to the instances on this Auto Scaling group. Each volume should be an object with the following: block_device_name (required), volume_size, volume_type, iops, encrypted, kms_key_id (only on launch-template), delete_on_termination. Optional values are grabbed from root volume or from defaults
     # Settings for launch templates
-    root_block_device_name            = data.aws_ami.eks_worker.root_device_name # Root device name for workers. If non is provided, will assume default AMI was used.
-    root_kms_key_id                   = ""                                       # The KMS key to use when encrypting the root storage device
-    launch_template_version           = "$Latest"                                # The lastest version of the launch template to use in the autoscaling group
-    launch_template_placement_tenancy = "default"                                # The placement tenancy for instances
-    launch_template_placement_group   = null                                     # The name of the placement group into which to launch the instances, if any.
-    root_encrypted                    = false                                    # Whether the volume should be encrypted or not
-    eni_delete                        = true                                     # Delete the Elastic Network Interface (ENI) on termination (if set to false you will have to manually delete before destroying)
-    cpu_credits                       = "standard"                               # T2/T3 unlimited mode, can be 'standard' or 'unlimited'. Used 'standard' mode as default to avoid paying higher costs
-    market_type                       = null
+    root_block_device_name               = data.aws_ami.eks_worker.root_device_name # Root device name for workers. If non is provided, will assume default AMI was used.
+    root_kms_key_id                      = ""                                       # The KMS key to use when encrypting the root storage device
+    launch_template_version              = "$Latest"                                # The lastest version of the launch template to use in the autoscaling group
+    launch_template_placement_tenancy    = "default"                                # The placement tenancy for instances
+    launch_template_placement_group      = null                                     # The name of the placement group into which to launch the instances, if any.
+    root_encrypted                       = false                                    # Whether the volume should be encrypted or not
+    eni_delete                           = true                                     # Delete the Elastic Network Interface (ENI) on termination (if set to false you will have to manually delete before destroying)
+    cpu_credits                          = "standard"                               # T2/T3 unlimited mode, can be 'standard' or 'unlimited'. Used 'standard' mode as default to avoid paying higher costs
+    market_type                          = null
+    metadata_http_endpoint               = "enabled"  # The state of the metadata service: enabled, disabled.
+    metadata_http_tokens                 = "optional" # If session tokens are required: optional, required.
+    metadata_http_put_response_hop_limit = null       # The desired HTTP PUT response hop limit for instance metadata requests.
     # Settings for launch templates with mixed instances policy
     override_instance_types                  = ["m5.large", "m5a.large", "m5d.large", "m5ad.large"] # A list of override instance types for mixed instances policy
     on_demand_allocation_strategy            = null                                                 # Strategy to use when launching on-demand instances. Valid values: prioritized.
@@ -146,92 +153,4 @@ locals {
     aws_authenticator_additional_args = var.kubeconfig_aws_authenticator_additional_args
     aws_authenticator_env_variables   = var.kubeconfig_aws_authenticator_env_variables
   }) : ""
-
-  userdata = [for worker in var.worker_groups : templatefile(
-    lookup(
-      worker,
-      "userdata_template_file",
-      lookup(worker, "platform", local.workers_group_defaults["platform"]) == "windows"
-      ? "${path.module}/templates/userdata_windows.tpl"
-      : "${path.module}/templates/userdata.sh.tpl"
-    ),
-    merge(
-      {
-        platform            = lookup(worker, "platform", local.workers_group_defaults["platform"])
-        cluster_name        = aws_eks_cluster.this[0].name
-        endpoint            = aws_eks_cluster.this[0].endpoint
-        cluster_auth_base64 = aws_eks_cluster.this[0].certificate_authority[0].data
-        pre_userdata = lookup(
-          worker,
-          "pre_userdata",
-          local.workers_group_defaults["pre_userdata"],
-        )
-        additional_userdata = lookup(
-          worker,
-          "additional_userdata",
-          local.workers_group_defaults["additional_userdata"],
-        )
-        bootstrap_extra_args = lookup(
-          worker,
-          "bootstrap_extra_args",
-          local.workers_group_defaults["bootstrap_extra_args"],
-        )
-        kubelet_extra_args = lookup(
-          worker,
-          "kubelet_extra_args",
-          local.workers_group_defaults["kubelet_extra_args"],
-        )
-      },
-      lookup(
-        worker,
-        "userdata_template_extra_args",
-        local.workers_group_defaults["userdata_template_extra_args"]
-      )
-    )
-    ) if var.create_eks
-  ]
-
-  launch_template_userdata = [for worker in var.worker_groups_launch_template : templatefile(
-    lookup(
-      worker,
-      "userdata_template_file",
-      lookup(worker, "platform", local.workers_group_defaults["platform"]) == "windows"
-      ? "${path.module}/templates/userdata_windows.tpl"
-      : "${path.module}/templates/userdata.sh.tpl"
-    ),
-    merge(
-      {
-        platform            = lookup(worker, "platform", local.workers_group_defaults["platform"])
-        cluster_name        = aws_eks_cluster.this[0].name
-        endpoint            = aws_eks_cluster.this[0].endpoint
-        cluster_auth_base64 = aws_eks_cluster.this[0].certificate_authority[0].data
-        pre_userdata = lookup(
-          worker,
-          "pre_userdata",
-          local.workers_group_defaults["pre_userdata"],
-        )
-        additional_userdata = lookup(
-          worker,
-          "additional_userdata",
-          local.workers_group_defaults["additional_userdata"],
-        )
-        bootstrap_extra_args = lookup(
-          worker,
-          "bootstrap_extra_args",
-          local.workers_group_defaults["bootstrap_extra_args"],
-        )
-        kubelet_extra_args = lookup(
-          worker,
-          "kubelet_extra_args",
-          local.workers_group_defaults["kubelet_extra_args"],
-        )
-      },
-      lookup(
-        worker,
-        "userdata_template_extra_args",
-        local.workers_group_defaults["userdata_template_extra_args"]
-      )
-    )
-    ) if var.create_eks
-  ]
 }
