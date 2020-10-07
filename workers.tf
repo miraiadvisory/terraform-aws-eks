@@ -37,11 +37,6 @@ resource "aws_autoscaling_group" "workers" {
     "target_group_arns",
     local.workers_group_defaults["target_group_arns"]
   )
-  load_balancers = lookup(
-    var.worker_groups[count.index],
-    "load_balancers",
-    local.workers_group_defaults["load_balancers"]
-  )
   service_linked_role_arn = lookup(
     var.worker_groups[count.index],
     "service_linked_role_arn",
@@ -107,38 +102,31 @@ resource "aws_autoscaling_group" "workers" {
     }
   }
 
-  dynamic "tag" {
-    for_each = concat(
-      [
-        {
-          "key"                 = "Name"
-          "value"               = "${aws_eks_cluster.this[0].name}-${lookup(var.worker_groups[count.index], "name", count.index)}-eks_asg"
-          "propagate_at_launch" = true
-        },
-        {
-          "key"                 = "kubernetes.io/cluster/${aws_eks_cluster.this[0].name}"
-          "value"               = "owned"
-          "propagate_at_launch" = true
-        },
-        {
-          "key"                 = "k8s.io/cluster/${aws_eks_cluster.this[0].name}"
-          "value"               = "owned"
-          "propagate_at_launch" = true
-        },
-      ],
-      local.asg_tags,
-      lookup(
-        var.worker_groups[count.index],
-        "tags",
-        local.workers_group_defaults["tags"]
-      )
+  tags = concat(
+    [
+      {
+        "key"                 = "Name"
+        "value"               = "${aws_eks_cluster.this[0].name}-${lookup(var.worker_groups[count.index], "name", count.index)}-eks_asg"
+        "propagate_at_launch" = true
+      },
+      {
+        "key"                 = "kubernetes.io/cluster/${aws_eks_cluster.this[0].name}"
+        "value"               = "owned"
+        "propagate_at_launch" = true
+      },
+      {
+        "key"                 = "k8s.io/cluster/${aws_eks_cluster.this[0].name}"
+        "value"               = "owned"
+        "propagate_at_launch" = true
+      },
+    ],
+    local.asg_tags,
+    lookup(
+      var.worker_groups[count.index],
+      "tags",
+      local.workers_group_defaults["tags"]
     )
-    content {
-      key                 = tag.value.key
-      value               = tag.value.value
-      propagate_at_launch = tag.value.propagate_at_launch
-    }
-  }
+  )
 
   lifecycle {
     create_before_destroy = true
@@ -182,7 +170,7 @@ resource "aws_launch_configuration" "workers" {
     "key_name",
     local.workers_group_defaults["key_name"],
   )
-  user_data_base64 = base64encode(data.template_file.userdata.*.rendered[count.index])
+  user_data_base64 = base64encode(local.userdata[count.index])
   ebs_optimized = lookup(
     var.worker_groups[count.index],
     "ebs_optimized",
@@ -268,22 +256,6 @@ resource "aws_launch_configuration" "workers" {
   lifecycle {
     create_before_destroy = true
   }
-
-  # Prevent premature access of security group roles and policies by pods that
-  # require permissions on create/destroy that depend on workers.
-  depends_on = [
-    aws_security_group_rule.workers_egress_internet,
-    aws_security_group_rule.workers_ingress_self,
-    aws_security_group_rule.workers_ingress_cluster,
-    aws_security_group_rule.workers_ingress_cluster_kubelet,
-    aws_security_group_rule.workers_ingress_cluster_https,
-    aws_security_group_rule.workers_ingress_cluster_primary,
-    aws_security_group_rule.cluster_primary_ingress_workers,
-    aws_iam_role_policy_attachment.workers_AmazonEKSWorkerNodePolicy,
-    aws_iam_role_policy_attachment.workers_AmazonEKS_CNI_Policy,
-    aws_iam_role_policy_attachment.workers_AmazonEC2ContainerRegistryReadOnly,
-    aws_iam_role_policy_attachment.workers_additional_policies
-  ]
 }
 
 resource "random_pet" "workers" {
@@ -299,14 +271,14 @@ resource "random_pet" "workers" {
 
 resource "aws_security_group" "workers" {
   count       = var.worker_create_security_group && var.create_eks ? 1 : 0
-  name_prefix = var.cluster_name
+  name_prefix = aws_eks_cluster.this[0].name
   description = "Security group for all nodes in the cluster."
   vpc_id      = var.vpc_id
   tags = merge(
     var.tags,
     {
-      "Name"                                      = "${var.cluster_name}-eks_worker_sg"
-      "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+      "Name"                                                  = "${aws_eks_cluster.this[0].name}-eks_worker_sg"
+      "kubernetes.io/cluster/${aws_eks_cluster.this[0].name}" = "owned"
     },
   )
 }
@@ -363,28 +335,6 @@ resource "aws_security_group_rule" "workers_ingress_cluster_https" {
   source_security_group_id = local.cluster_security_group_id
   from_port                = 443
   to_port                  = 443
-  type                     = "ingress"
-}
-
-resource "aws_security_group_rule" "workers_ingress_cluster_primary" {
-  count                    = var.worker_create_security_group && var.worker_create_cluster_primary_security_group_rules && var.cluster_version >= 1.14 && var.create_eks ? 1 : 0
-  description              = "Allow pods running on workers to receive communication from cluster primary security group (e.g. Fargate pods)."
-  protocol                 = "all"
-  security_group_id        = local.worker_security_group_id
-  source_security_group_id = local.cluster_primary_security_group_id
-  from_port                = 0
-  to_port                  = 65535
-  type                     = "ingress"
-}
-
-resource "aws_security_group_rule" "cluster_primary_ingress_workers" {
-  count                    = var.worker_create_security_group && var.worker_create_cluster_primary_security_group_rules && var.cluster_version >= 1.14 && var.create_eks ? 1 : 0
-  description              = "Allow pods running on workers to send communication to cluster primary security group (e.g. Fargate pods)."
-  protocol                 = "all"
-  security_group_id        = local.cluster_primary_security_group_id
-  source_security_group_id = local.worker_security_group_id
-  from_port                = 0
-  to_port                  = 65535
   type                     = "ingress"
 }
 
