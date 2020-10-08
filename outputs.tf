@@ -171,6 +171,7 @@ output "security_group_rule_cluster_https_worker_ingress" {
   value       = aws_security_group_rule.cluster_https_worker_ingress
 }
 
+
 output "eks_sg" {
   description = "TMP CNI SG"
   value = concat(aws_eks_cluster.this[0].vpc_config[*].cluster_security_group_id, [""])[0]
