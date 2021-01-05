@@ -27,7 +27,7 @@ resource "aws_eks_cluster" "this" {
     delete = var.cluster_delete_timeout
   }
 
-  dynamic encryption_config {
+  dynamic "encryption_config" {
     for_each = toset(var.cluster_encryption_config)
 
     content {
@@ -64,7 +64,7 @@ resource "null_resource" "wait_for_cluster" {
   count = var.create_eks && var.manage_aws_auth ? 1 : 0
 
   depends_on = [
-    aws_eks_cluster.this[0],
+    aws_eks_cluster.this,
     aws_security_group_rule.cluster_private_access,
   ]
 
@@ -163,6 +163,7 @@ resource "aws_iam_policy" "cluster_elb_sl_role_creation" {
   name_prefix = "${var.cluster_name}-elb-sl-role-creation"
   description = "Permissions for EKS to create AWSServiceRoleForElasticLoadBalancing service-linked role"
   policy      = data.aws_iam_policy_document.cluster_elb_sl_role_creation[0].json
+  path        = var.iam_path
 }
 
 resource "aws_iam_role_policy_attachment" "cluster_elb_sl_role_creation" {
