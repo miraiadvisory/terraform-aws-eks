@@ -50,7 +50,7 @@ variable "manage_aws_auth" {
 }
 
 variable "aws_auth_additional_labels" {
-  description = "Additionnal kubernetes labels applied on aws-auth ConfigMap"
+  description = "Additional kubernetes labels applied on aws-auth ConfigMap"
   default     = {}
   type        = map(string)
 }
@@ -290,7 +290,7 @@ variable "manage_cluster_iam_resources" {
 }
 
 variable "cluster_iam_role_name" {
-  description = "IAM role name for the cluster. Only applicable if manage_cluster_iam_resources is set to false. Set this to reuse an existing IAM role."
+  description = "IAM role name for the cluster. If manage_cluster_iam_resources is set to false, set this to reuse an existing IAM role. If manage_cluster_iam_resources is set to true, set this to force the created role name."
   type        = string
   default     = ""
 }
@@ -368,4 +368,22 @@ variable "fargate_pod_execution_role_name" {
   description = "The IAM Role that provides permissions for the EKS Fargate Profile."
   type        = string
   default     = null
+}
+
+variable "cluster_service_ipv4_cidr" {
+  description = "service ipv4 cidr for the kubernetes cluster"
+  type        = string
+  default     = null
+}
+
+variable "cluster_egress_cidrs" {
+  description = "List of CIDR blocks that are permitted for cluster egress traffic."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "workers_egress_cidrs" {
+  description = "List of CIDR blocks that are permitted for workers egress traffic."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
 }
