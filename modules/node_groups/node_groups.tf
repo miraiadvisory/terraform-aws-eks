@@ -48,12 +48,22 @@ resource "aws_eks_node_group" "workers" {
   dynamic "launch_template" {
     for_each = each.value["launch_template_id"] == null && each.value["create_launch_template"] ? [{
       id      = aws_launch_template.workers[each.key].id
-      version = aws_launch_template.workers[each.key].latest_version
+      version = each.value["launch_template_version"]
     }] : []
 
     content {
       id      = launch_template.value["id"]
       version = launch_template.value["version"]
+    }
+  }
+
+  dynamic "taint" {
+    for_each = each.value["taints"]
+
+    content {
+      key    = taint.value["key"]
+      value  = taint.value["value"]
+      effect = taint.value["effect"]
     }
   }
 
