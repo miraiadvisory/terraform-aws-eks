@@ -1,8 +1,10 @@
-# IAM Roles for Service Accounts
+# Complete AWS EKS Cluster
 
-This example shows how to create an IAM role to be used for a Kubernetes `ServiceAccount`. It will create a policy and role to be used by the [cluster-autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler) using the [public Helm chart](https://github.com/kubernetes/autoscaler/tree/master/charts/cluster-autoscaler).
+Configuration in this directory creates EKS cluster with different features shown all-in-one cluster (e.g. Managed Node Groups, Worker Groups, Fargate, Spot instances, AWS Auth enabled).
 
-See [the official documentation](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) for more details.
+This example can be used to do smoke test.
+
+See configurations in other `examples` directories for more specific cases.
 
 ## Usage
 
@@ -23,7 +25,6 @@ Note that this example may create resources which cost money. Run `terraform des
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 0.13.1 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.56 |
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.0 |
 | <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | >= 1.11.1 |
 | <a name="requirement_local"></a> [local](#requirement\_local) | >= 1.4 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | >= 2.1 |
@@ -33,30 +34,29 @@ Note that this example may create resources which cost money. Run `terraform des
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.56 |
-| <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.0 |
 | <a name="provider_random"></a> [random](#provider\_random) | >= 2.1 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_disabled_eks"></a> [disabled\_eks](#module\_disabled\_eks) | ../.. | n/a |
+| <a name="module_disabled_fargate"></a> [disabled\_fargate](#module\_disabled\_fargate) | ../../modules/fargate | n/a |
+| <a name="module_disabled_node_groups"></a> [disabled\_node\_groups](#module\_disabled\_node\_groups) | ../../modules/node_groups | n/a |
 | <a name="module_eks"></a> [eks](#module\_eks) | ../.. | n/a |
-| <a name="module_iam_assumable_role_admin"></a> [iam\_assumable\_role\_admin](#module\_iam\_assumable\_role\_admin) | terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc | ~> 4.0 |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | terraform-aws-modules/vpc/aws | ~> 3.0 |
 
 ## Resources
 
 | Name | Type |
 |------|------|
-| [aws_iam_policy.cluster_autoscaler](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
-| [helm_release.cluster-autoscaler](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [aws_security_group.all_worker_mgmt](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+| [aws_security_group.worker_group_mgmt_one](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+| [aws_security_group.worker_group_mgmt_two](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [random_string.suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) | resource |
 | [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
-| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_eks_cluster.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster) | data source |
 | [aws_eks_cluster_auth.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster_auth) | data source |
-| [aws_iam_policy_document.cluster_autoscaler](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
-| [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
 ## Inputs
 
@@ -66,5 +66,9 @@ No inputs.
 
 | Name | Description |
 |------|-------------|
-| <a name="output_aws_account_id"></a> [aws\_account\_id](#output\_aws\_account\_id) | IAM AWS account id |
+| <a name="output_cluster_endpoint"></a> [cluster\_endpoint](#output\_cluster\_endpoint) | Endpoint for EKS control plane. |
+| <a name="output_cluster_security_group_id"></a> [cluster\_security\_group\_id](#output\_cluster\_security\_group\_id) | Security group ids attached to the cluster control plane. |
+| <a name="output_config_map_aws_auth"></a> [config\_map\_aws\_auth](#output\_config\_map\_aws\_auth) | A kubernetes configuration to authenticate to this EKS cluster. |
+| <a name="output_kubectl_config"></a> [kubectl\_config](#output\_kubectl\_config) | kubectl config as generated by the module. |
+| <a name="output_node_groups"></a> [node\_groups](#output\_node\_groups) | Outputs from node groups |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

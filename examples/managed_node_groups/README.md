@@ -1,10 +1,11 @@
-# AWS EKS cluster running Bottlerocket AMI
+# Managed groups example
 
-Configuration in this directory creates EKS cluster with workers group running [AWS Bottlerocket OS](https://github.com/bottlerocket-os/bottlerocket)
+This is EKS example using managed groups feature in two different ways:
 
-This is a minimalistic example which shows what knobs to turn to make Bottlerocket work.
+- Using SPOT instances in node group
+- Using ON_DEMAND instance in node group
 
-See [the official documentation](https://docs.aws.amazon.com/eks/latest/userguide/eks-optimized-ami-bottlerocket.html) for more details.
+See [the official documentation](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html) for more details.
 
 ## Usage
 
@@ -28,7 +29,6 @@ Note that this example may create resources which cost money. Run `terraform des
 | <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | >= 1.11.1 |
 | <a name="requirement_local"></a> [local](#requirement\_local) | >= 1.4 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | >= 2.1 |
-| <a name="requirement_tls"></a> [tls](#requirement\_tls) | >= 2.0 |
 
 ## Providers
 
@@ -36,7 +36,6 @@ Note that this example may create resources which cost money. Run `terraform des
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.56 |
 | <a name="provider_random"></a> [random](#provider\_random) | >= 2.1 |
-| <a name="provider_tls"></a> [tls](#provider\_tls) | >= 2.0 |
 
 ## Modules
 
@@ -49,19 +48,18 @@ Note that this example may create resources which cost money. Run `terraform des
 
 | Name | Type |
 |------|------|
-| [aws_iam_role_policy_attachment.ssm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_key_pair.nodes](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/key_pair) | resource |
 | [random_string.suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) | resource |
-| [tls_private_key.nodes](https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/private_key) | resource |
-| [aws_ami.bottlerocket_ami](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
 | [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
 | [aws_eks_cluster.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster) | data source |
 | [aws_eks_cluster_auth.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster_auth) | data source |
-| [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
 ## Inputs
 
-No inputs.
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_map_accounts"></a> [map\_accounts](#input\_map\_accounts) | Additional AWS account numbers to add to the aws-auth configmap. | `list(string)` | <pre>[<br>  "777777777777",<br>  "888888888888"<br>]</pre> | no |
+| <a name="input_map_roles"></a> [map\_roles](#input\_map\_roles) | Additional IAM roles to add to the aws-auth configmap. | <pre>list(object({<br>    rolearn  = string<br>    username = string<br>    groups   = list(string)<br>  }))</pre> | <pre>[<br>  {<br>    "groups": [<br>      "system:masters"<br>    ],<br>    "rolearn": "arn:aws:iam::66666666666:role/role1",<br>    "username": "role1"<br>  }<br>]</pre> | no |
+| <a name="input_map_users"></a> [map\_users](#input\_map\_users) | Additional IAM users to add to the aws-auth configmap. | <pre>list(object({<br>    userarn  = string<br>    username = string<br>    groups   = list(string)<br>  }))</pre> | <pre>[<br>  {<br>    "groups": [<br>      "system:masters"<br>    ],<br>    "userarn": "arn:aws:iam::66666666666:user/user1",<br>    "username": "user1"<br>  },<br>  {<br>    "groups": [<br>      "system:masters"<br>    ],<br>    "userarn": "arn:aws:iam::66666666666:user/user2",<br>    "username": "user2"<br>  }<br>]</pre> | no |
 
 ## Outputs
 

@@ -1,6 +1,63 @@
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
+
+locals {
+  k8s_service_account_namespace = "kube-system"
+  k8s_service_account_name      = "cluster-autoscaler-aws"
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.cluster.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.cluster.token
+  }
+}
+
+resource "helm_release" "cluster-autoscaler" {
+  depends_on = [
+    module.eks
+  ]
+
+  name             = "cluster-autoscaler"
+  namespace        = local.k8s_service_account_namespace
+  repository       = "https://kubernetes.github.io/autoscaler"
+  chart            = "cluster-autoscaler"
+  version          = "9.10.7"
+  create_namespace = false
+
+  set {
+    name  = "awsRegion"
+    value = data.aws_region.current.name
+  }
+  set {
+    name  = "rbac.serviceAccount.name"
+    value = local.k8s_service_account_name
+  }
+  set {
+    name  = "rbac.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.iam_assumable_role_admin.iam_role_arn
+    type  = "string"
+  }
+  set {
+    name  = "autoDiscovery.clusterName"
+    value = local.name
+  }
+  set {
+    name  = "autoDiscovery.enabled"
+    value = "true"
+  }
+  set {
+    name  = "rbac.create"
+    value = "true"
+  }
+}
+
 module "iam_assumable_role_admin" {
-  source                        = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version                       = "3.6.0"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+  version = "~> 4.0"
+
   create_role                   = true
   role_name                     = "cluster-autoscaler"
   provider_url                  = replace(module.eks.cluster_oidc_issuer_url, "https://", "")
@@ -44,7 +101,7 @@ data "aws_iam_policy_document" "cluster_autoscaler" {
 
     condition {
       test     = "StringEquals"
-      variable = "autoscaling:ResourceTag/kubernetes.io/cluster/${module.eks.cluster_id}"
+      variable = "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/${module.eks.cluster_id}"
       values   = ["owned"]
     }
 
