@@ -2,6 +2,99 @@
 
 All notable changes to this project will be documented in this file.
 
+### [18.2.3](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.2.2...v18.2.3) (2022-01-24)
+
+
+### Bug Fixes
+
+* Add missing `mixed_instances_policy` parameter to the root module ([#1808](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1808)) ([4af77f2](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/4af77f244a558ec66db6561488a5d8cd0c0f1aed))
+
+### [18.2.2](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.2.1...v18.2.2) (2022-01-22)
+
+
+### Bug Fixes
+
+* Attributes in timeouts are erroneously reversed ([#1804](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1804)) ([f8fe584](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/f8fe584d5b50cc4009ac6c34e3bbb33a4e282f2e))
+
+### [18.2.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.2.0...v18.2.1) (2022-01-18)
+
+
+### Bug Fixes
+
+* Change `instance_metadata_tags` to default to `null`/`disabled` due to tag key pattern conflict ([#1788](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1788)) ([8e4dfa2](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/8e4dfa2be5c60e98a9b20a8ae716c5c446fe935c))
+
+## [18.2.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.1.0...v18.2.0) (2022-01-14)
+
+
+### Features
+
+* Add `instance_metadata_tags` attribute to launch templates ([#1781](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1781)) ([85bb1a0](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/85bb1a00b6111845141a8c07a9459bbd160d7ed3))
+
+## [18.1.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.0.6...v18.1.0) (2022-01-14)
+
+
+### Features
+
+* Add support for networking `ip_family` which enables support for IPV6 ([#1759](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1759)) ([314192e](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/314192e2ebc5faaf5f027a7d868cd36c4844aee1))
+
+### [18.0.6](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.0.5...v18.0.6) (2022-01-11)
+
+
+### Bug Fixes
+
+* Correct remote access variable for security groups and add example for additional IAM policies ([#1766](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1766)) ([f54bd30](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/f54bd3047ba18179766641e347fe9f4fa60ff11b))
+
+### [18.0.5](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.0.4...v18.0.5) (2022-01-08)
+
+
+### Bug Fixes
+
+* Use the prefix_seperator var for node sg prefix ([#1751](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1751)) ([62879dd](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/62879dd81a69ba010f19ba9ece8392e1730b53e0))
+
+### [18.0.4](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.0.3...v18.0.4) (2022-01-07)
+
+
+### Bug Fixes
+
+* Not to iterate over remote_access object in dynamic block ([#1743](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1743)) ([86b3c33](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/86b3c339a772e76239f97a9bb1f710199d1bd04a))
+
+### [18.0.3](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.0.2...v18.0.3) (2022-01-06)
+
+
+### Bug Fixes
+
+* Remove trailing hyphen from cluster security group and iam role name prefix ([#1745](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1745)) ([7089c71](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/7089c71e64dbae281435629e19d647ae6952f9ac))
+
+### [18.0.2](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.0.1...v18.0.2) (2022-01-06)
+
+
+### Bug Fixes
+
+* Change variable "node_security_group_additional_rules" from type map(any) to any ([#1747](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1747)) ([8921827](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/89218279d4439110439ca4cb8ac94575ab92b042))
+
+### [18.0.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.0.0...v18.0.1) (2022-01-06)
+
+
+### Bug Fixes
+
+* Correct conditional map for cluster security group additional rules ([#1738](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1738)) ([a2c7caa](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/a2c7caac9f01ef167994d8b62afb5f997d0fac66))
+
+## [18.0.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v17.24.0...v18.0.0) (2022-01-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* Removed support for launch configuration and replace `count` with `for_each` (#1680)
+
+### Features
+
+* Removed support for launch configuration and replace `count` with `for_each` ([#1680](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1680)) ([ee9f0c6](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/ee9f0c646a45ca9baa6174a036d1e09bcccb87b1))
+
+
+### Bug Fixes
+
+* Update preset rule on semantic-release to use conventional commits ([#1736](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1736)) ([be86c0b](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/be86c0b898c34943e898e2ecd4994bb7904663ff))
+
 # [17.24.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v17.23.0...v17.24.0) (2021-11-22)
 
 
