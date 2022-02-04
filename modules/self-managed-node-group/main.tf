@@ -229,7 +229,7 @@ resource "aws_launch_template" "this" {
     for_each = toset(["instance", "volume", "network-interface"])
     content {
       resource_type = tag_specifications.key
-      tags          = merge(var.tags, { Name = var.name })
+      tags          = merge(var.tags, { Name = var.name }, var.launch_template_tags)
     }
   }
 
@@ -460,8 +460,7 @@ resource "aws_security_group" "this" {
   tags = merge(
     var.tags,
     {
-      "Name"                                      = local.security_group_name
-      "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+      "Name" = local.security_group_name
     },
     var.security_group_tags
   )
