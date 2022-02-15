@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [18.6.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.5.1...v18.6.0) (2022-02-11)
+
+
+### Features
+
+* Add additional output for OIDC provider (issuer URL without leading `https://`) ([#1870](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1870)) ([d3b6847](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/d3b68479dea49076a36e0c39e8c41407f270dcad))
+
+### [18.5.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.5.0...v18.5.1) (2022-02-09)
+
+
+### Bug Fixes
+
+* Use existing node security group when one is provided ([#1861](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1861)) ([c821ba7](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/c821ba78ca924273d17e9c3b15eae05dd7fb9c94))
+
+## [18.5.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.4.1...v18.5.0) (2022-02-08)
+
+
+### Features
+
+* Allow conditional creation of node groups to be set within node group definitions ([#1848](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1848)) ([665f468](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/665f468c1f4839836b1cb5fa5f18ebba17696288))
+
+### [18.4.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.4.0...v18.4.1) (2022-02-07)
+
+
+### Bug Fixes
+
+* Add node group dependency for EKS addons resource creation ([#1840](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1840)) ([2515e0e](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/2515e0e561509d026fd0d4725ab0bd864e7340f9))
+
+## [18.4.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.3.1...v18.4.0) (2022-02-06)
+
+
+### Features
+
+* enable IRSA by default ([#1849](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1849)) ([21c3802](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/21c3802dea52bf51ab99c322fcfdce554086a794))
+
+### [18.3.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.3.0...v18.3.1) (2022-02-04)
+
+
+### Bug Fixes
+
+* The `block_duration_minutes` attribute under launch template `spot_options` is not a required ([#1847](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1847)) ([ccc4747](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/ccc4747122b29ac35975e3c89edaa6ee28a86e4a))
+
 ## [18.3.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.2.7...v18.3.0) (2022-02-03)
 
 
