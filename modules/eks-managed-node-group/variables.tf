@@ -126,6 +126,12 @@ variable "vpc_security_group_ids" {
   default     = []
 }
 
+variable "cluster_primary_security_group_id" {
+  description = "The ID of the EKS cluster primary security group to associate with the instance(s). This is the security group that is automatically created by the EKS service"
+  type        = string
+  default     = null
+}
+
 variable "launch_template_default_version" {
   description = "Default version of the launch template"
   type        = string
@@ -444,7 +450,7 @@ variable "iam_role_name" {
 
 variable "iam_role_use_name_prefix" {
   description = "Determines whether the IAM role name (`iam_role_name`) is used as a prefix"
-  type        = string
+  type        = bool
   default     = true
 }
 

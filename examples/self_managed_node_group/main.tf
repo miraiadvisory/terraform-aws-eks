@@ -2,9 +2,21 @@ provider "aws" {
   region = local.region
 }
 
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1alpha1"
+    command     = "aws"
+    # This requires the awscli to be installed locally where Terraform is executed
+    args = ["eks", "get-token", "--cluster-name", module.eks.cluster_id]
+  }
+}
+
 locals {
   name            = "ex-${replace(basename(path.cwd), "_", "-")}"
-  cluster_version = "1.21"
+  cluster_version = "1.22"
   region          = "eu-west-1"
 
   tags = {
@@ -46,6 +58,10 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
+  # Self managed node groups will not automatically create the aws-auth configmap so we need to
+  create_aws_auth_configmap = true
+  manage_aws_auth_configmap = true
+
   # Extend cluster security group rules
   cluster_security_group_additional_rules = {
     egress_nodes_ephemeral_ports_tcp = {
@@ -80,7 +96,13 @@ module "eks" {
   }
 
   self_managed_node_group_defaults = {
-    disk_size = 50
+    create_security_group = false
+
+    # enable discovery of autoscaling groups by cluster-autoscaler
+    autoscaling_group_tags = {
+      "k8s.io/cluster-autoscaler/enabled" : true,
+      "k8s.io/cluster-autoscaler/${local.name}" : "owned",
+    }
   }
 
   self_managed_node_groups = {
@@ -146,6 +168,37 @@ module "eks" {
       }
     }
 
+    efa = {
+      min_size     = 1
+      max_size     = 2
+      desired_size = 1
+
+      # aws ec2 describe-instance-types --region eu-west-1 --filters Name=network-info.efa-supported,Values=true --query "InstanceTypes[*].[InstanceType]" --output text | sort
+      instance_type = "c5n.9xlarge"
+
+      post_bootstrap_user_data = <<-EOT
+
+      # Install EFA
+      curl -O https://efa-installer.amazonaws.com/aws-efa-installer-latest.tar.gz
+      tar -xf aws-efa-installer-latest.tar.gz && cd aws-efa-installer
+      ./efa_installer.sh -y --minimal
+      fi_info -p efa -t FI_EP_RDM
+
+      # Disable ptrace
+      sysctl -w kernel.yama.ptrace_scope=0
+      EOT
+
+      network_interfaces = [
+        {
+          description                 = "EFA interface example"
+          delete_on_termination       = true
+          device_index                = 0
+          associate_public_ip_address = false
+          interface_type              = "efa"
+        }
+      ]
+    }
+
     # Complete
     complete = {
       name            = "complete-self-mng"
@@ -169,7 +222,6 @@ module "eks" {
       echo "you are free little kubelet!"
       EOT
 
-      disk_size     = 256
       instance_type = "m6i.large"
 
       launch_template_name            = "self-managed-ex"
@@ -200,6 +252,12 @@ module "eks" {
         http_tokens                 = "required"
         http_put_response_hop_limit = 2
         instance_metadata_tags      = "disabled"
+      }
+
+      capacity_reservation_specification = {
+        capacity_reservation_target = {
+          capacity_reservation_id = aws_ec2_capacity_reservation.targeted.id
+        }
       }
 
       create_iam_role          = true
@@ -252,62 +310,6 @@ module "eks" {
   }
 
   tags = local.tags
-}
-
-################################################################################
-# aws-auth configmap
-# Only EKS managed node groups automatically add roles to aws-auth configmap
-# so we need to ensure fargate profiles and self-managed node roles are added
-################################################################################
-
-data "aws_eks_cluster_auth" "this" {
-  name = module.eks.cluster_id
-}
-
-locals {
-  kubeconfig = yamlencode({
-    apiVersion      = "v1"
-    kind            = "Config"
-    current-context = "terraform"
-    clusters = [{
-      name = module.eks.cluster_id
-      cluster = {
-        certificate-authority-data = module.eks.cluster_certificate_authority_data
-        server                     = module.eks.cluster_endpoint
-      }
-    }]
-    contexts = [{
-      name = "terraform"
-      context = {
-        cluster = module.eks.cluster_id
-        user    = "terraform"
-      }
-    }]
-    users = [{
-      name = "terraform"
-      user = {
-        token = data.aws_eks_cluster_auth.this.token
-      }
-    }]
-  })
-}
-
-resource "null_resource" "apply" {
-  triggers = {
-    kubeconfig = base64encode(local.kubeconfig)
-    cmd_patch  = <<-EOT
-      kubectl create configmap aws-auth -n kube-system --kubeconfig <(echo $KUBECONFIG | base64 --decode)
-      kubectl patch configmap/aws-auth --patch "${module.eks.aws_auth_configmap_yaml}" -n kube-system --kubeconfig <(echo $KUBECONFIG | base64 --decode)
-    EOT
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    environment = {
-      KUBECONFIG = self.triggers.kubeconfig
-    }
-    command = self.triggers.cmd_patch
-  }
 }
 
 ################################################################################
@@ -405,6 +407,14 @@ resource "aws_kms_key" "ebs" {
   description             = "Customer managed key to encrypt self managed node group volumes"
   deletion_window_in_days = 7
   policy                  = data.aws_iam_policy_document.ebs.json
+}
+
+resource "aws_ec2_capacity_reservation" "targeted" {
+  instance_type           = "m6i.large"
+  instance_platform       = "Linux/UNIX"
+  availability_zone       = "${local.region}a"
+  instance_count          = 1
+  instance_match_criteria = "targeted"
 }
 
 # This policy is required for the KMS key used for EKS root volumes, so the cluster is allowed to enc/dec/attach encrypted EBS volumes

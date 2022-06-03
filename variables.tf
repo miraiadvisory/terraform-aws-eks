@@ -89,10 +89,22 @@ variable "cluster_encryption_config" {
   default = []
 }
 
+variable "attach_cluster_encryption_policy" {
+  description = "Indicates whether or not to attach an additional policy for the cluster IAM role to utilize the encryption key provided"
+  type        = bool
+  default     = true
+}
+
 variable "cluster_tags" {
   description = "A map of additional tags to add to the cluster"
   type        = map(string)
   default     = {}
+}
+
+variable "create_cluster_primary_security_group_tags" {
+  description = "Indicates whether or not to tag the cluster's primary security group. This security group is created by the EKS service, not the module, and therefore tagging is handled after cluster creation"
+  type        = bool
+  default     = true
 }
 
 variable "cluster_timeouts" {
@@ -247,6 +259,12 @@ variable "openid_connect_audiences" {
   default     = []
 }
 
+variable "custom_oidc_thumbprints" {
+  description = "Additional list of server certificate thumbprints for the OpenID Connect (OIDC) identity provider's server certificate(s)"
+  type        = list(string)
+  default     = []
+}
+
 ################################################################################
 # Cluster IAM Role
 ################################################################################
@@ -271,7 +289,7 @@ variable "iam_role_name" {
 
 variable "iam_role_use_name_prefix" {
   description = "Determines whether the IAM role name (`iam_role_name`) is used as a prefix"
-  type        = string
+  type        = bool
   default     = true
 }
 
@@ -299,8 +317,46 @@ variable "iam_role_additional_policies" {
   default     = []
 }
 
+# TODO - hopefully this can be removed once the AWS endpoint is named properly in China
+# https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1904
+variable "cluster_iam_role_dns_suffix" {
+  description = "Base DNS domain name for the current partition (e.g., amazonaws.com in AWS Commercial, amazonaws.com.cn in AWS China)"
+  type        = string
+  default     = null
+}
+
 variable "iam_role_tags" {
   description = "A map of additional tags to add to the IAM role created"
+  type        = map(string)
+  default     = {}
+}
+
+variable "cluster_encryption_policy_use_name_prefix" {
+  description = "Determines whether cluster encryption policy name (`cluster_encryption_policy_name`) is used as a prefix"
+  type        = string
+  default     = true
+}
+
+variable "cluster_encryption_policy_name" {
+  description = "Name to use on cluster encryption policy created"
+  type        = string
+  default     = null
+}
+
+variable "cluster_encryption_policy_description" {
+  description = "Description of the cluster encryption policy created"
+  type        = string
+  default     = "Cluster encryption policy to allow cluster role to utilize CMK provided"
+}
+
+variable "cluster_encryption_policy_path" {
+  description = "Cluster encryption policy path"
+  type        = string
+  default     = null
+}
+
+variable "cluster_encryption_policy_tags" {
+  description = "A map of additional tags to add to the cluster encryption policy created"
   type        = map(string)
   default     = {}
 }
@@ -371,4 +427,62 @@ variable "eks_managed_node_group_defaults" {
   description = "Map of EKS managed node group default configurations"
   type        = any
   default     = {}
+}
+
+variable "putin_khuylo" {
+  description = "Do you agree that Putin doesn't respect Ukrainian sovereignty and territorial integrity? More info: https://en.wikipedia.org/wiki/Putin_khuylo!"
+  type        = bool
+  default     = true
+}
+
+################################################################################
+# aws-auth configmap
+################################################################################
+
+variable "manage_aws_auth_configmap" {
+  description = "Determines whether to manage the aws-auth configmap"
+  type        = bool
+  default     = false
+}
+
+variable "create_aws_auth_configmap" {
+  description = "Determines whether to create the aws-auth configmap. NOTE - this is only intended for scenarios where the configmap does not exist (i.e. - when using only self-managed node groups). Most users should use `manage_aws_auth_configmap`"
+  type        = bool
+  default     = false
+}
+
+variable "aws_auth_node_iam_role_arns_non_windows" {
+  description = "List of non-Windows based node IAM role ARNs to add to the aws-auth configmap"
+  type        = list(string)
+  default     = []
+}
+
+variable "aws_auth_node_iam_role_arns_windows" {
+  description = "List of Windows based node IAM role ARNs to add to the aws-auth configmap"
+  type        = list(string)
+  default     = []
+}
+
+variable "aws_auth_fargate_profile_pod_execution_role_arns" {
+  description = "List of Fargate profile pod execution role ARNs to add to the aws-auth configmap"
+  type        = list(string)
+  default     = []
+}
+
+variable "aws_auth_roles" {
+  description = "List of role maps to add to the aws-auth configmap"
+  type        = list(any)
+  default     = []
+}
+
+variable "aws_auth_users" {
+  description = "List of user maps to add to the aws-auth configmap"
+  type        = list(any)
+  default     = []
+}
+
+variable "aws_auth_accounts" {
+  description = "List of account maps to add to the aws-auth configmap"
+  type        = list(any)
+  default     = []
 }

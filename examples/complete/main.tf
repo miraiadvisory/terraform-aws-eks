@@ -1,11 +1,28 @@
 provider "aws" {
   region = local.region
+
+  default_tags {
+    tags = {
+      ExampleDefaultTag = "ExampleDefaultValue"
+    }
+  }
+}
+
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1alpha1"
+    command     = "aws"
+    # This requires the awscli to be installed locally where Terraform is executed
+    args = ["eks", "get-token", "--cluster-name", module.eks.cluster_id]
+  }
 }
 
 locals {
-  name            = "ex-${replace(basename(path.cwd), "_", "-")}"
-  cluster_version = "1.21"
-  region          = "eu-west-1"
+  name   = "ex-${replace(basename(path.cwd), "_", "-")}"
+  region = "eu-west-1"
 
   tags = {
     Example    = local.name
@@ -22,7 +39,6 @@ module "eks" {
   source = "../.."
 
   cluster_name                    = local.name
-  cluster_version                 = local.cluster_version
   cluster_endpoint_private_access = true
   cluster_endpoint_public_access  = true
 
@@ -108,10 +124,11 @@ module "eks" {
 
   # EKS Managed Node Group(s)
   eks_managed_node_group_defaults = {
-    ami_type               = "AL2_x86_64"
-    disk_size              = 50
-    instance_types         = ["m6i.large", "m5.large", "m5n.large", "m5zn.large"]
-    vpc_security_group_ids = [aws_security_group.additional.id]
+    ami_type       = "AL2_x86_64"
+    instance_types = ["m6i.large", "m5.large", "m5n.large", "m5zn.large"]
+
+    attach_cluster_primary_security_group = true
+    vpc_security_group_ids                = [aws_security_group.additional.id]
   }
 
   eks_managed_node_groups = {
@@ -174,6 +191,43 @@ module "eks" {
     }
   }
 
+  # aws-auth configmap
+  manage_aws_auth_configmap = true
+
+  aws_auth_node_iam_role_arns_non_windows = [
+    module.eks_managed_node_group.iam_role_arn,
+    module.self_managed_node_group.iam_role_arn,
+  ]
+  aws_auth_fargate_profile_pod_execution_role_arns = [
+    module.fargate_profile.fargate_profile_pod_execution_role_arn
+  ]
+
+  aws_auth_roles = [
+    {
+      rolearn  = "arn:aws:iam::66666666666:role/role1"
+      username = "role1"
+      groups   = ["system:masters"]
+    },
+  ]
+
+  aws_auth_users = [
+    {
+      userarn  = "arn:aws:iam::66666666666:user/user1"
+      username = "user1"
+      groups   = ["system:masters"]
+    },
+    {
+      userarn  = "arn:aws:iam::66666666666:user/user2"
+      username = "user2"
+      groups   = ["system:masters"]
+    },
+  ]
+
+  aws_auth_accounts = [
+    "777777777777",
+    "888888888888",
+  ]
+
   tags = local.tags
 }
 
@@ -186,12 +240,12 @@ module "eks_managed_node_group" {
 
   name            = "separate-eks-mng"
   cluster_name    = module.eks.cluster_id
-  cluster_version = local.cluster_version
+  cluster_version = module.eks.cluster_version
 
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
+  vpc_id                            = module.vpc.vpc_id
+  subnet_ids                        = module.vpc.private_subnets
+  cluster_primary_security_group_id = module.eks.cluster_primary_security_group_id
   vpc_security_group_ids = [
-    module.eks.cluster_primary_security_group_id,
     module.eks.cluster_security_group_id,
   ]
 
@@ -203,7 +257,7 @@ module "self_managed_node_group" {
 
   name                = "separate-self-mng"
   cluster_name        = module.eks.cluster_id
-  cluster_version     = local.cluster_version
+  cluster_version     = module.eks.cluster_version
   cluster_endpoint    = module.eks.cluster_endpoint
   cluster_auth_base64 = module.eks.cluster_certificate_authority_data
 
@@ -215,6 +269,8 @@ module "self_managed_node_group" {
     module.eks.cluster_primary_security_group_id,
     module.eks.cluster_security_group_id,
   ]
+
+  use_default_tags = true
 
   tags = merge(local.tags, { Separate = "self-managed-node-group" })
 }
@@ -259,80 +315,6 @@ module "disabled_self_managed_node_group" {
   source = "../../modules/self-managed-node-group"
 
   create = false
-}
-
-################################################################################
-# aws-auth configmap
-# Only EKS managed node groups automatically add roles to aws-auth configmap
-# so we need to ensure fargate profiles and self-managed node roles are added
-################################################################################
-
-data "aws_eks_cluster_auth" "this" {
-  name = module.eks.cluster_id
-}
-
-locals {
-  kubeconfig = yamlencode({
-    apiVersion      = "v1"
-    kind            = "Config"
-    current-context = "terraform"
-    clusters = [{
-      name = module.eks.cluster_id
-      cluster = {
-        certificate-authority-data = module.eks.cluster_certificate_authority_data
-        server                     = module.eks.cluster_endpoint
-      }
-    }]
-    contexts = [{
-      name = "terraform"
-      context = {
-        cluster = module.eks.cluster_id
-        user    = "terraform"
-      }
-    }]
-    users = [{
-      name = "terraform"
-      user = {
-        token = data.aws_eks_cluster_auth.this.token
-      }
-    }]
-  })
-
-  # we have to combine the configmap created by the eks module with the externally created node group/profile sub-modules
-  aws_auth_configmap_yaml = <<-EOT
-  ${chomp(module.eks.aws_auth_configmap_yaml)}
-      - rolearn: ${module.eks_managed_node_group.iam_role_arn}
-        username: system:node:{{EC2PrivateDNSName}}
-        groups:
-          - system:bootstrappers
-          - system:nodes
-      - rolearn: ${module.self_managed_node_group.iam_role_arn}
-        username: system:node:{{EC2PrivateDNSName}}
-        groups:
-          - system:bootstrappers
-          - system:nodes
-      - rolearn: ${module.fargate_profile.fargate_profile_pod_execution_role_arn}
-        username: system:node:{{SessionName}}
-        groups:
-          - system:bootstrappers
-          - system:nodes
-          - system:node-proxier
-  EOT
-}
-
-resource "null_resource" "patch" {
-  triggers = {
-    kubeconfig = base64encode(local.kubeconfig)
-    cmd_patch  = "kubectl patch configmap/aws-auth --patch \"${local.aws_auth_configmap_yaml}\" -n kube-system --kubeconfig <(echo $KUBECONFIG | base64 --decode)"
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    environment = {
-      KUBECONFIG = self.triggers.kubeconfig
-    }
-    command = self.triggers.cmd_patch
-  }
 }
 
 ################################################################################

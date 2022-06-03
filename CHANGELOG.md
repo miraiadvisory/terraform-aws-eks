@@ -2,6 +2,223 @@
 
 All notable changes to this project will be documented in this file.
 
+## [18.23.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.22.0...v18.23.0) (2022-06-02)
+
+
+### Features
+
+* Add `autoscaling_group_tags` variable to self-managed-node-groups ([#2084](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2084)) ([8584dcb](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/8584dcb2e0c9061828505c36a8ed8eb6ced02053))
+
+## [18.22.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.21.0...v18.22.0) (2022-06-02)
+
+
+### Features
+
+* Apply `distinct()` on role arns to ensure no duplicated roles in aws-auth configmap ([#2097](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2097)) ([3feb369](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/3feb36927f92fb72ab0cfc25a3ab67465872f4bf))
+
+## [18.21.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.20.5...v18.21.0) (2022-05-12)
+
+
+### Features
+
+* Add `create_autoscaling_group` option and extra outputs ([#2067](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2067)) ([58420b9](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/58420b92a0838aa2e17b156b174893b349083a2b))
+
+### [18.20.5](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.20.4...v18.20.5) (2022-04-21)
+
+
+### Bug Fixes
+
+* Add conditional variable to allow users to opt out of tagging cluster primary security group ([#2034](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2034)) ([51e4182](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/51e418216f210647b69bbd06e569a061c2f0e3c1))
+
+### [18.20.4](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.20.3...v18.20.4) (2022-04-20)
+
+
+### Bug Fixes
+
+* Correct DNS suffix for OIDC provider ([#2026](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2026)) ([5da692d](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/5da692df67cae313711e94216949d1105da6a87f))
+
+### [18.20.3](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.20.2...v18.20.3) (2022-04-20)
+
+
+### Bug Fixes
+
+* Add `compact()` to `aws_auth_configmap_yaml` for when node groups are set to `create = false` ([#2029](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2029)) ([c173ba2](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/c173ba2d62d228729fe6c68f713af6dbe15e7233))
+
+### [18.20.2](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.20.1...v18.20.2) (2022-04-12)
+
+
+### Bug Fixes
+
+* Avoid re-naming the primary security group through a `Name` tag and leave to the EKS service to manage ([#2010](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2010)) ([b5ae5da](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/b5ae5daa39f8380dc21c9ef1daff22242930692e))
+
+### [18.20.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.20.0...v18.20.1) (2022-04-09)
+
+
+### Bug Fixes
+
+* iam_role_user_name_prefix type as an bool ([#2000](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2000)) ([c576aad](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/c576aadce968d09f3295fc06f0766cc9e2a35e29))
+
+## [18.20.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.19.0...v18.20.0) (2022-04-09)
+
+
+### Features
+
+* Add support for managing `aws-auth` configmap using new `kubernetes_config_map_v1_data` resource ([#1999](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1999)) ([da3d54c](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/da3d54cde70adfd8b5d2770805b17d526923113e))
+
+## [18.19.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.18.0...v18.19.0) (2022-04-04)
+
+
+### Features
+
+* Add `create_before_destroy` lifecycle hook to security groups created ([#1985](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1985)) ([6db89f8](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/6db89f8f20a58ae5cfbab5541ff7e499ddf971b8))
+
+## [18.18.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.17.1...v18.18.0) (2022-04-03)
+
+
+### Features
+
+* Add support for allowing EFA network interfaces ([#1980](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1980)) ([523144e](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/523144e1d7d4f64ccf30656078fd10d7cd63a444))
+
+### [18.17.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.17.0...v18.17.1) (2022-04-02)
+
+
+### Bug Fixes
+
+* Correct `capacity_reservation_target` within launch templates of both EKS and self managed node groups ([#1979](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1979)) ([381144e](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/381144e3bb604b3086ceea537a6052a6179ce5b3))
+
+## [18.17.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.16.0...v18.17.0) (2022-03-30)
+
+
+### Features
+
+* Add back in CloudWatch log group create deny policy to cluster IAM role ([#1974](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1974)) ([98e137f](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/98e137fad990d51a31d86e908ea593e933fc22a9))
+
+## [18.16.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.15.0...v18.16.0) (2022-03-29)
+
+
+### Features
+
+* Support default_tags in aws_autoscaling_group ([#1973](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1973)) ([7a9458a](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/7a9458af52ddf1f6180324e845b1e8a26fd5c1f5))
+
+## [18.15.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.14.1...v18.15.0) (2022-03-25)
+
+
+### Features
+
+* Update TLS provider and remove unnecessary cloud init version requirements ([#1966](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1966)) ([0269d38](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/0269d38fcae2b1ca566427159d33910fe96299a7))
+
+### [18.14.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.14.0...v18.14.1) (2022-03-24)
+
+
+### Bug Fixes
+
+* Default to cluster version for EKS and self managed node groups when a `cluster_version` is not specified ([#1963](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1963)) ([fd3a3e9](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/fd3a3e9a96d9a8fa9b22446e2ac8c36cdf68c5fc))
+
+## [18.14.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.13.0...v18.14.0) (2022-03-24)
+
+
+### Features
+
+* Add tags to EKS created cluster security group to match rest of module tagging scheme ([#1957](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1957)) ([9371a29](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/9371a2943b13cc2d9ceb34aef14ec2ccee1cb721))
+
+## [18.13.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.12.0...v18.13.0) (2022-03-23)
+
+
+### Features
+
+* Allow users to selectively attach the EKS created cluster primary security group to nodes ([#1952](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1952)) ([e21db83](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/e21db83d8ff3cd1d3f49acc611931e8917d0b6f8))
+
+## [18.12.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.11.0...v18.12.0) (2022-03-22)
+
+
+### Features
+
+* Add outputs for autoscaling group names created to aid in autoscaling group tagging ([#1953](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1953)) ([8b03b7b](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/8b03b7b85ef80db5de766827ef65b700317c68e6))
+
+## [18.11.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.10.2...v18.11.0) (2022-03-18)
+
+
+### Features
+
+* Allow users to specify default launch template name in node groups ([#1946](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1946)) ([a9d2cc8](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/a9d2cc8246128fc7f426f0b4596c6799ecf94d8a))
+
+### [18.10.2](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.10.1...v18.10.2) (2022-03-17)
+
+
+### Bug Fixes
+
+* Sub-modules output the correct eks worker iam arn when workers utilize custom iam role ([#1912](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1912)) ([06a3469](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/06a3469d203fc4344d5f94564762432b5cfd2043))
+
+### [18.10.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.10.0...v18.10.1) (2022-03-15)
+
+
+### Bug Fixes
+
+* Compact result of cluster security group to avoid disruptive updates when no security groups are supplied ([#1934](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1934)) ([5935670](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/5935670503bba3405b53e49ddd88a6451f534d4a))
+
+## [18.10.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.9.0...v18.10.0) (2022-03-12)
+
+
+### Features
+
+* Made it clear that we stand with Ukraine ([fad350d](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/fad350d5bf36a7e39aa3840926b4c9968e9f594c))
+
+## [18.9.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.8.1...v18.9.0) (2022-03-09)
+
+
+### Features
+
+* Add variables to allow users to control attributes on `cluster_encryption` IAM policy ([#1928](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1928)) ([2df1572](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/2df1572b8a031fbd31a845cc5c61f015ec387f56))
+
+### [18.8.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.8.0...v18.8.1) (2022-03-02)
+
+
+### Bug Fixes
+
+* Ensure that cluster encryption policy resources are only relevant when creating the IAM role ([#1917](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1917)) ([0fefca7](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/0fefca76f2258cee565359e36a4851978602f36d))
+
+## [18.8.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.7.3...v18.8.0) (2022-03-02)
+
+
+### Features
+
+* Add additional IAM policy to allow cluster role to use KMS key provided for cluster encryption ([#1915](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1915)) ([7644952](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/7644952131a466ca22ba5b3e62cd988e01eff716))
+
+### [18.7.3](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.7.2...v18.7.3) (2022-03-02)
+
+
+### Bug Fixes
+
+* Add support for overriding DNS suffix for cluster IAM role service principal endpoint ([#1905](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1905)) ([9af0c24](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/9af0c2495a1fe7a02411ac436f48f6d9ca8b359f))
+
+### [18.7.2](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.7.1...v18.7.2) (2022-02-16)
+
+
+### Bug Fixes
+
+* Update examples to show integration and usage of new IRSA submodule ([#1882](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1882)) ([8de02b9](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/8de02b9ff4690d1bbefb86d3441662b16abb03dd))
+
+### [18.7.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.7.0...v18.7.1) (2022-02-15)
+
+
+### Bug Fixes
+
+* Add missing quotes to block_duration_minutes ([#1881](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1881)) ([8bc6488](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/8bc6488d559d603b539bc1a9c4eb8c57c529b25e))
+
+## [18.7.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.6.1...v18.7.0) (2022-02-15)
+
+
+### Features
+
+* Add variable to provide additional OIDC thumbprints ([#1865](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1865)) ([3fc9f2d](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/3fc9f2d69c32a2536aaee45adbe0c3449d7fc986))
+
+### [18.6.1](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.6.0...v18.6.1) (2022-02-15)
+
+
+### Bug Fixes
+
+* Update autoscaling group `tags` -> `tag` to support v4 of AWS provider ([#1866](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1866)) ([74ad4b0](https://github.com/terraform-aws-modules/terraform-aws-eks/commit/74ad4b09b7bbee857c833cb92afe07499356831d))
+
 ## [18.6.0](https://github.com/terraform-aws-modules/terraform-aws-eks/compare/v18.5.1...v18.6.0) (2022-02-11)
 
 

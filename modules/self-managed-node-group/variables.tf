@@ -23,7 +23,7 @@ variable "platform" {
 variable "cluster_name" {
   description = "Name of associated EKS cluster"
   type        = string
-  default     = null
+  default     = ""
 }
 
 variable "cluster_endpoint" {
@@ -234,6 +234,12 @@ variable "vpc_security_group_ids" {
   default     = []
 }
 
+variable "cluster_primary_security_group_id" {
+  description = "The ID of the EKS cluster primary security group to associate with the instance(s). This is the security group that is automatically created by the EKS service"
+  type        = string
+  default     = null
+}
+
 variable "enable_monitoring" {
   description = "Enables/disables detailed monitoring"
   type        = bool
@@ -259,6 +265,12 @@ variable "launch_template_tags" {
 ################################################################################
 # Autoscaling group
 ################################################################################
+
+variable "create_autoscaling_group" {
+  description = "Determines whether to create autoscaling group or not"
+  type        = bool
+  default     = true
+}
 
 variable "name" {
   description = "Name of the Self managed Node Group"
@@ -446,10 +458,16 @@ variable "delete_timeout" {
   default     = null
 }
 
-variable "propagate_tags" {
-  description = "A list of tag blocks. Each element should have keys named `key`, `value`, and `propagate_at_launch`"
-  type        = list(map(string))
-  default     = []
+variable "use_default_tags" {
+  description = "Enables/disables the use of provider default tags in the tag_specifications of the Auto Scaling group"
+  type        = bool
+  default     = false
+}
+
+variable "autoscaling_group_tags" {
+  description = "A map of additional tags to add to the autoscaling group created. Tags are applied to the autoscaling group only and are NOT propagated to instances"
+  type        = map(string)
+  default     = {}
 }
 
 ################################################################################
@@ -550,7 +568,7 @@ variable "iam_role_name" {
 
 variable "iam_role_use_name_prefix" {
   description = "Determines whether cluster IAM role name (`iam_role_name`) is used as a prefix"
-  type        = string
+  type        = bool
   default     = true
 }
 

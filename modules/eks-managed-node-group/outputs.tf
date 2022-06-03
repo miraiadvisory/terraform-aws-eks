@@ -36,6 +36,11 @@ output "node_group_resources" {
   value       = try(aws_eks_node_group.this[0].resources, "")
 }
 
+output "node_group_autoscaling_group_names" {
+  description = "List of the autoscaling group names"
+  value       = try(flatten(aws_eks_node_group.this[0].resources[*].autoscaling_groups[*].name), [])
+}
+
 output "node_group_status" {
   description = "Status of the EKS Node Group"
   value       = try(aws_eks_node_group.this[0].arn, "")
@@ -66,7 +71,7 @@ output "iam_role_name" {
 
 output "iam_role_arn" {
   description = "The Amazon Resource Name (ARN) specifying the IAM role"
-  value       = try(aws_iam_role.this[0].arn, "")
+  value       = try(aws_iam_role.this[0].arn, var.iam_role_arn)
 }
 
 output "iam_role_unique_id" {

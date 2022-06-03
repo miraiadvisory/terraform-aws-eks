@@ -2,9 +2,21 @@ provider "aws" {
   region = local.region
 }
 
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1alpha1"
+    command     = "aws"
+    # This requires the awscli to be installed locally where Terraform is executed
+    args = ["eks", "get-token", "--cluster-name", module.eks.cluster_id]
+  }
+}
+
 locals {
   name            = "ex-${replace(basename(path.cwd), "_", "-")}"
-  cluster_version = "1.21"
+  cluster_version = "1.22"
   region          = "eu-west-1"
 
   tags = {
@@ -29,7 +41,14 @@ module "eks" {
   cluster_endpoint_public_access  = true
 
   # IPV6
-  cluster_ip_family          = "ipv6"
+  cluster_ip_family = "ipv6"
+
+  # We are using the IRSA created below for permissions
+  # However, we have to deploy with the policy attached FIRST (when creating a fresh cluster)
+  # and then turn this off after the cluster/node group is created. Without this initial policy,
+  # the VPC CNI fails to assign IPs and nodes cannot join the cluster
+  # See https://github.com/aws/containers-roadmap/issues/1666 for more context
+  # TODO - remove this policy once AWS releases a managed version similar to AmazonEKS_CNI_Policy (IPv4)
   create_cni_ipv6_iam_policy = true
 
   cluster_addons = {
@@ -38,7 +57,8 @@ module "eks" {
     }
     kube-proxy = {}
     vpc-cni = {
-      resolve_conflicts = "OVERWRITE"
+      resolve_conflicts        = "OVERWRITE"
+      service_account_role_arn = module.vpc_cni_irsa.iam_role_arn
     }
   }
 
@@ -47,8 +67,17 @@ module "eks" {
     resources        = ["secrets"]
   }]
 
+  cluster_tags = {
+    # This should not affect the name of the cluster primary security group
+    # Ref: https://github.com/terraform-aws-modules/terraform-aws-eks/pull/2006
+    # Ref: https://github.com/terraform-aws-modules/terraform-aws-eks/pull/2008
+    Name = local.name
+  }
+
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
+
+  manage_aws_auth_configmap = true
 
   # Extend cluster security group rules
   cluster_security_group_additional_rules = {
@@ -85,8 +114,14 @@ module "eks" {
 
   eks_managed_node_group_defaults = {
     ami_type       = "AL2_x86_64"
-    disk_size      = 50
     instance_types = ["m6i.large", "m5.large", "m5n.large", "m5zn.large"]
+
+    # We are using the IRSA created below for permissions
+    # However, we have to deploy with the policy attached FIRST (when creating a fresh cluster)
+    # and then turn this off after the cluster/node group is created. Without this initial policy,
+    # the VPC CNI fails to assign IPs and nodes cannot join the cluster
+    # See https://github.com/aws/containers-roadmap/issues/1666 for more context
+    iam_role_attach_cni_policy = true
   }
 
   eks_managed_node_groups = {
@@ -96,6 +131,8 @@ module "eks" {
       # so we need to disable it to use the default template provided by the AWS EKS managed node group service
       create_launch_template = false
       launch_template_name   = ""
+
+      disk_size = 50
 
       # Remote access cannot be specified with a launch template
       remote_access = {
@@ -218,7 +255,6 @@ module "eks" {
       EOT
 
       capacity_type        = "SPOT"
-      disk_size            = 256
       force_update_version = true
       instance_types       = ["m6i.large", "m5.large", "m5n.large", "m5zn.large"]
       labels = {
@@ -326,59 +362,6 @@ resource "aws_iam_role_policy_attachment" "additional" {
 }
 
 ################################################################################
-# aws-auth configmap
-# Only EKS managed node groups automatically add roles to aws-auth configmap
-# so we need to ensure fargate profiles and self-managed node roles are added
-################################################################################
-
-data "aws_eks_cluster_auth" "this" {
-  name = module.eks.cluster_id
-}
-
-locals {
-  kubeconfig = yamlencode({
-    apiVersion      = "v1"
-    kind            = "Config"
-    current-context = "terraform"
-    clusters = [{
-      name = module.eks.cluster_id
-      cluster = {
-        certificate-authority-data = module.eks.cluster_certificate_authority_data
-        server                     = module.eks.cluster_endpoint
-      }
-    }]
-    contexts = [{
-      name = "terraform"
-      context = {
-        cluster = module.eks.cluster_id
-        user    = "terraform"
-      }
-    }]
-    users = [{
-      name = "terraform"
-      user = {
-        token = data.aws_eks_cluster_auth.this.token
-      }
-    }]
-  })
-}
-
-resource "null_resource" "patch" {
-  triggers = {
-    kubeconfig = base64encode(local.kubeconfig)
-    cmd_patch  = "kubectl patch configmap/aws-auth --patch \"${module.eks.aws_auth_configmap_yaml}\" -n kube-system --kubeconfig <(echo $KUBECONFIG | base64 --decode)"
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    environment = {
-      KUBECONFIG = self.triggers.kubeconfig
-    }
-    command = self.triggers.cmd_patch
-  }
-}
-
-################################################################################
 # Supporting Resources
 ################################################################################
 
@@ -416,6 +399,24 @@ module "vpc" {
   private_subnet_tags = {
     "kubernetes.io/cluster/${local.name}" = "shared"
     "kubernetes.io/role/internal-elb"     = 1
+  }
+
+  tags = local.tags
+}
+
+module "vpc_cni_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 4.12"
+
+  role_name_prefix      = "VPC-CNI-IRSA"
+  attach_vpc_cni_policy = true
+  vpc_cni_enable_ipv6   = true
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:aws-node"]
+    }
   }
 
   tags = local.tags
@@ -535,10 +536,11 @@ resource "aws_launch_template" "external" {
     enabled = true
   }
 
-  network_interfaces {
-    associate_public_ip_address = false
-    delete_on_termination       = true
-  }
+  # Disabling due to https://github.com/hashicorp/terraform-provider-aws/issues/23766
+  # network_interfaces {
+  #   associate_public_ip_address = false
+  #   delete_on_termination       = true
+  # }
 
   # if you want to use a custom AMI
   # image_id      = var.ami_id

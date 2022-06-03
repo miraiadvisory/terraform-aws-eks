@@ -124,7 +124,7 @@ output "iam_role_unique_id" {
 
 output "iam_instance_profile_arn" {
   description = "ARN assigned by AWS to the instance profile"
-  value       = try(aws_iam_instance_profile.this[0].arn, "")
+  value       = try(aws_iam_instance_profile.this[0].arn, var.iam_instance_profile_arn)
 }
 
 output "iam_instance_profile_id" {
@@ -144,4 +144,14 @@ output "iam_instance_profile_unique" {
 output "platform" {
   description = "Identifies if the OS platform is `bottlerocket`, `linux`, or `windows` based"
   value       = var.platform
+}
+
+output "image_id" {
+  description = "ID of the image"
+  value       = try(data.aws_ami.eks_default[0].image_id, "")
+}
+
+output "user_data" {
+  description = "Base64 encoded user data"
+  value       = try(module.user_data.user_data, "")
 }

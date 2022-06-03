@@ -27,6 +27,11 @@ output "cluster_oidc_issuer_url" {
   value       = try(aws_eks_cluster.this[0].identity[0].oidc[0].issuer, "")
 }
 
+output "cluster_version" {
+  description = "The Kubernetes version for the cluster"
+  value       = try(aws_eks_cluster.this[0].version, "")
+}
+
 output "cluster_platform_version" {
   description = "Platform version for the cluster"
   value       = try(aws_eks_cluster.this[0].platform_version, "")
@@ -153,6 +158,11 @@ output "eks_managed_node_groups" {
   value       = module.eks_managed_node_group
 }
 
+output "eks_managed_node_groups_autoscaling_group_names" {
+  description = "List of the autoscaling group names created by EKS managed node groups"
+  value       = flatten([for group in module.eks_managed_node_group : group.node_group_autoscaling_group_names])
+}
+
 ################################################################################
 # Self Managed Node Group
 ################################################################################
@@ -162,18 +172,23 @@ output "self_managed_node_groups" {
   value       = module.self_managed_node_group
 }
 
+output "self_managed_node_groups_autoscaling_group_names" {
+  description = "List of the autoscaling group names created by self-managed node groups"
+  value       = [for group in module.self_managed_node_group : group.autoscaling_group_name]
+}
+
 ################################################################################
 # Additional
 ################################################################################
 
 output "aws_auth_configmap_yaml" {
-  description = "Formatted yaml output for base aws-auth configmap containing roles used in cluster node groups/fargate profiles"
+  description = "[DEPRECATED - use `var.manage_aws_auth_configmap`] Formatted yaml output for base aws-auth configmap containing roles used in cluster node groups/fargate profiles"
   value = templatefile("${path.module}/templates/aws_auth_cm.tpl",
     {
-      eks_managed_role_arns                   = [for group in module.eks_managed_node_group : group.iam_role_arn]
-      self_managed_role_arns                  = [for group in module.self_managed_node_group : group.iam_role_arn if group.platform != "windows"]
-      win32_self_managed_role_arns            = [for group in module.self_managed_node_group : group.iam_role_arn if group.platform == "windows"]
-      fargate_profile_pod_execution_role_arns = [for group in module.fargate_profile : group.fargate_profile_pod_execution_role_arn]
+      eks_managed_role_arns                   = distinct(compact([for group in module.eks_managed_node_group : group.iam_role_arn]))
+      self_managed_role_arns                  = distinct(compact([for group in module.self_managed_node_group : group.iam_role_arn if group.platform != "windows"]))
+      win32_self_managed_role_arns            = distinct(compact([for group in module.self_managed_node_group : group.iam_role_arn if group.platform == "windows"]))
+      fargate_profile_pod_execution_role_arns = distinct(compact([for group in module.fargate_profile : group.fargate_profile_pod_execution_role_arn]))
     }
   )
 }

@@ -2,6 +2,8 @@ data "aws_partition" "current" {}
 
 data "aws_caller_identity" "current" {}
 
+data "aws_default_tags" "current" {}
+
 data "aws_ami" "eks_default" {
   count = var.create ? 1 : 0
 
@@ -42,6 +44,8 @@ module "user_data" {
 
 locals {
   launch_template_name_int = coalesce(var.launch_template_name, "${var.name}-node-group")
+
+  security_group_ids = compact(concat([try(aws_security_group.this[0].id, ""), var.cluster_primary_security_group_id], var.vpc_security_group_ids))
 }
 
 resource "aws_launch_template" "this" {
@@ -57,7 +61,7 @@ resource "aws_launch_template" "this" {
   key_name      = var.key_name
   user_data     = module.user_data.user_data
 
-  vpc_security_group_ids = compact(concat([try(aws_security_group.this[0].id, "")], var.vpc_security_group_ids))
+  vpc_security_group_ids = length(var.network_interfaces) > 0 ? [] : local.security_group_ids
 
   default_version                      = var.launch_template_default_version
   update_default_version               = var.update_launch_template_default_version
@@ -95,7 +99,7 @@ resource "aws_launch_template" "this" {
       capacity_reservation_preference = lookup(capacity_reservation_specification.value, "capacity_reservation_preference", null)
 
       dynamic "capacity_reservation_target" {
-        for_each = lookup(capacity_reservation_specification.value, "capacity_reservation_target", [])
+        for_each = try([capacity_reservation_specification.value.capacity_reservation_target], [])
         content {
           capacity_reservation_id = lookup(capacity_reservation_target.value, "capacity_reservation_id", null)
         }
@@ -158,7 +162,7 @@ resource "aws_launch_template" "this" {
       dynamic "spot_options" {
         for_each = lookup(instance_market_options.value, "spot_options", null) != null ? [instance_market_options.value.spot_options] : []
         content {
-          block_duration_minutes         = lookup(spot_options.value, block_duration_minutes, null)
+          block_duration_minutes         = lookup(spot_options.value, "block_duration_minutes", null)
           instance_interruption_behavior = lookup(spot_options.value, "instance_interruption_behavior", null)
           max_price                      = lookup(spot_options.value, "max_price", null)
           spot_instance_type             = lookup(spot_options.value, "spot_instance_type", null)
@@ -201,13 +205,14 @@ resource "aws_launch_template" "this" {
       delete_on_termination        = lookup(network_interfaces.value, "delete_on_termination", null)
       description                  = lookup(network_interfaces.value, "description", null)
       device_index                 = lookup(network_interfaces.value, "device_index", null)
-      ipv4_addresses               = lookup(network_interfaces.value, "ipv4_addresses", null) != null ? network_interfaces.value.ipv4_addresses : []
+      interface_type               = lookup(network_interfaces.value, "interface_type", null)
+      ipv4_addresses               = try(network_interfaces.value.ipv4_addresses, [])
       ipv4_address_count           = lookup(network_interfaces.value, "ipv4_address_count", null)
-      ipv6_addresses               = lookup(network_interfaces.value, "ipv6_addresses", null) != null ? network_interfaces.value.ipv6_addresses : []
+      ipv6_addresses               = try(network_interfaces.value.ipv6_addresses, [])
       ipv6_address_count           = lookup(network_interfaces.value, "ipv6_address_count", null)
       network_interface_id         = lookup(network_interfaces.value, "network_interface_id", null)
       private_ip_address           = lookup(network_interfaces.value, "private_ip_address", null)
-      security_groups              = lookup(network_interfaces.value, "security_groups", null) != null ? network_interfaces.value.security_groups : []
+      security_groups              = compact(concat(try(network_interfaces.value.security_groups, []), local.security_group_ids))
       subnet_id                    = lookup(network_interfaces.value, "subnet_id", null)
     }
   }
@@ -258,7 +263,7 @@ locals {
 }
 
 resource "aws_autoscaling_group" "this" {
-  count = var.create ? 1 : 0
+  count = var.create && var.create_autoscaling_group ? 1 : 0
 
   name        = var.use_name_prefix ? null : var.name
   name_prefix = var.use_name_prefix ? "${var.name}-" : null
@@ -378,6 +383,33 @@ resource "aws_autoscaling_group" "this" {
     }
   }
 
+  dynamic "tag" {
+    for_each = merge(
+      {
+        "Name"                                      = var.name
+        "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+        "k8s.io/cluster/${var.cluster_name}"        = "owned"
+      },
+      var.use_default_tags ? merge(data.aws_default_tags.current.tags, var.tags) : var.tags
+    )
+
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
+  }
+
+  dynamic "tag" {
+    for_each = var.autoscaling_group_tags
+
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = false
+    }
+  }
+
   timeouts {
     delete = var.delete_timeout
   }
@@ -388,34 +420,6 @@ resource "aws_autoscaling_group" "this" {
       desired_capacity
     ]
   }
-
-  tags = concat(
-    [
-      {
-        key                 = "Name"
-        value               = var.name
-        propagate_at_launch = true
-      },
-      {
-        key                 = "kubernetes.io/cluster/${var.cluster_name}"
-        value               = "owned"
-        propagate_at_launch = true
-      },
-      {
-        key                 = "k8s.io/cluster/${var.cluster_name}"
-        value               = "owned"
-        propagate_at_launch = true
-      },
-    ],
-    var.propagate_tags,
-    [for k, v in var.tags :
-      {
-        key                 = k
-        value               = v
-        propagate_at_launch = true
-      }
-    ]
-  )
 }
 
 ################################################################################
@@ -464,6 +468,12 @@ resource "aws_security_group" "this" {
     },
     var.security_group_tags
   )
+
+  # https://github.com/hashicorp/terraform-provider-aws/issues/2445
+  # https://github.com/hashicorp/terraform-provider-aws/issues/9692
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_security_group_rule" "this" {

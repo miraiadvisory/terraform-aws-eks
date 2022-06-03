@@ -2,6 +2,19 @@
 
 Please consult the `examples` directory for reference example configurations. If you find a bug, please open an issue with supporting configuration to reproduce.
 
+Note: please see https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1744 where users have shared the steps/changes that have worked for their configurations to upgrade. Due to the numerous configuration possibilities, it is difficult to capture specific steps that will work for all; this has proven to be a useful thread to share collective information from the broader community regarding v18.x upgrades.
+
+For most users, adding the following to your v17.x configuration will preserve the state of your cluster control plane when upgrading to v18.x:
+
+```hcl
+prefix_separator                   = ""
+iam_role_name                      = $CLUSTER_NAME
+cluster_security_group_name        = $CLUSTER_NAME
+cluster_security_group_description = "EKS cluster security group."
+```
+
+See more information [here](https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1744#issuecomment-1027359982)
+
 ## List of backwards incompatible changes
 
 - Launch configuration support has been removed and only launch template is supported going forward. AWS is no longer adding new features back into launch configuration and their docs state [`We strongly recommend that you do not use launch configurations. They do not provide full functionality for Amazon EC2 Auto Scaling or Amazon EC2. We provide information about launch configurations for customers who have not yet migrated from launch configurations to launch templates.`](https://docs.aws.amazon.com/autoscaling/ec2/userguide/LaunchConfiguration.html)
@@ -550,6 +563,163 @@ module "cluster_after" {
     GithubOrg   = "terraform-aws-modules"
   }
 }
+```
+
+### Diff of before <> after
+
+```diff
+ module "eks" {
+   source  = "terraform-aws-modules/eks/aws"
+-  version = "~> 17.0"
++  version = "~> 18.0"
+
+   cluster_name                    = local.name
+   cluster_version                 = local.cluster_version
+   cluster_endpoint_private_access = true
+   cluster_endpoint_public_access  = true
+
+   vpc_id  = module.vpc.vpc_id
+-  subnets = module.vpc.private_subnets
++  subnet_ids = module.vpc.private_subnets
+
+-  # Managed Node Groups
+-  node_groups_defaults = {
++  eks_managed_node_group_defaults = {
+     ami_type  = "AL2_x86_64"
+     disk_size = 50
+   }
+
+-  node_groups = {
++  eks_managed_node_groups = {
+     node_group = {
+-      min_capacity     = 1
+-      max_capacity     = 10
+-      desired_capacity = 1
++      min_size     = 1
++      max_size     = 10
++      desired_size = 1
+
+       instance_types = ["t3.large"]
+       capacity_type  = "SPOT"
+
+       update_config = {
+         max_unavailable_percentage = 50
+       }
+
+-      k8s_labels = {
++      labels = {
+         Environment = "test"
+         GithubRepo  = "terraform-aws-eks"
+         GithubOrg   = "terraform-aws-modules"
+       }
+
+       taints = [
+         {
+           key    = "dedicated"
+           value  = "gpuGroup"
+           effect = "NO_SCHEDULE"
+         }
+       ]
+
+-      additional_tags = {
++      tags = {
+         ExtraTag = "example"
+       }
+     }
+   }
+
+-  # Worker groups
+-  worker_additional_security_group_ids = [aws_security_group.additional.id]
+-
+-  worker_groups_launch_template = [
+-    {
+-      name                    = "worker-group"
+-      override_instance_types = ["m5.large", "m5a.large", "m5d.large", "m5ad.large"]
+-      spot_instance_pools     = 4
+-      asg_max_size            = 5
+-      asg_desired_capacity    = 2
+-      kubelet_extra_args      = "--node-labels=node.kubernetes.io/lifecycle=spot"
+-      public_ip               = true
+-    },
+-  ]
++  self_managed_node_group_defaults = {
++    vpc_security_group_ids = [aws_security_group.additional.id]
++  }
++
++  self_managed_node_groups = {
++    worker_group = {
++      name = "worker-group"
++
++      min_size      = 1
++      max_size      = 5
++      desired_size  = 2
++      instance_type = "m4.large"
++
++      bootstrap_extra_args = "--kubelet-extra-args '--node-labels=node.kubernetes.io/lifecycle=spot'"
++
++      block_device_mappings = {
++        xvda = {
++          device_name = "/dev/xvda"
++          ebs = {
++            delete_on_termination = true
++            encrypted             = false
++            volume_size           = 100
++            volume_type           = "gp2"
++          }
++
++        }
++      }
++
++      use_mixed_instances_policy = true
++      mixed_instances_policy = {
++        instances_distribution = {
++          spot_instance_pools = 4
++        }
++
++        override = [
++          { instance_type = "m5.large" },
++          { instance_type = "m5a.large" },
++          { instance_type = "m5d.large" },
++          { instance_type = "m5ad.large" },
++        ]
++      }
++    }
++  }
+
+   # Fargate
+   fargate_profiles = {
+     default = {
+       name = "default"
+       selectors = [
+         {
+           namespace = "kube-system"
+           labels = {
+             k8s-app = "kube-dns"
+           }
+         },
+         {
+           namespace = "default"
+         }
+       ]
+
+       tags = {
+         Owner = "test"
+       }
+
+       timeouts = {
+         create = "20m"
+         delete = "20m"
+       }
+     }
+   }
+
+   tags = {
+     Environment = "test"
+     GithubRepo  = "terraform-aws-eks"
+     GithubOrg   = "terraform-aws-modules"
+   }
+ }
+
 ```
 
 ### Attaching an IAM role policy to a Fargate profile
