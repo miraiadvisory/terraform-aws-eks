@@ -110,7 +110,10 @@ resource "aws_cloudwatch_log_group" "this" {
   retention_in_days = var.cloudwatch_log_group_retention_in_days
   kms_key_id        = var.cloudwatch_log_group_kms_key_id
 
-  tags = var.tags
+  tags = merge(
+    var.tags,
+    { Name = "/aws/eks/${var.cluster_name}/cluster" }
+  )
 }
 
 ################################################################################
@@ -383,7 +386,7 @@ resource "aws_eks_addon" "this" {
   cluster_name = aws_eks_cluster.this[0].name
   addon_name   = try(each.value.name, each.key)
 
-  addon_version            = try(each.value.addon_version, data.aws_eks_addon_version.this[each.key].version)
+  addon_version            = coalesce(try(each.value.addon_version, null), data.aws_eks_addon_version.this[each.key].version)
   configuration_values     = try(each.value.configuration_values, null)
   preserve                 = try(each.value.preserve, null)
   resolve_conflicts        = try(each.value.resolve_conflicts, "OVERWRITE")
@@ -411,7 +414,7 @@ resource "aws_eks_addon" "before_compute" {
   cluster_name = aws_eks_cluster.this[0].name
   addon_name   = try(each.value.name, each.key)
 
-  addon_version            = try(each.value.addon_version, data.aws_eks_addon_version.this[each.key].version)
+  addon_version            = coalesce(try(each.value.addon_version, null), data.aws_eks_addon_version.this[each.key].version)
   configuration_values     = try(each.value.configuration_values, null)
   preserve                 = try(each.value.preserve, null)
   resolve_conflicts        = try(each.value.resolve_conflicts, "OVERWRITE")
@@ -466,7 +469,7 @@ locals {
   node_iam_role_arns_non_windows = distinct(
     compact(
       concat(
-        [for group in module.eks_managed_node_group : group.iam_role_arn],
+        [for group in module.eks_managed_node_group : group.iam_role_arn if group.platform != "windows"],
         [for group in module.self_managed_node_group : group.iam_role_arn if group.platform != "windows"],
         var.aws_auth_node_iam_role_arns_non_windows,
       )
@@ -476,6 +479,7 @@ locals {
   node_iam_role_arns_windows = distinct(
     compact(
       concat(
+        [for group in module.eks_managed_node_group : group.iam_role_arn if group.platform == "windows"],
         [for group in module.self_managed_node_group : group.iam_role_arn if group.platform == "windows"],
         var.aws_auth_node_iam_role_arns_windows,
       )
