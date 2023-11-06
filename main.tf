@@ -122,7 +122,7 @@ resource "aws_cloudwatch_log_group" "this" {
 
 module "kms" {
   source  = "terraform-aws-modules/kms/aws"
-  version = "1.1.0" # Note - be mindful of Terraform/provider version compatibility between modules
+  version = "2.1.0" # Note - be mindful of Terraform/provider version compatibility between modules
 
   create = local.create && var.create_kms_key && local.enable_cluster_encryption_config # not valid on Outposts
 
@@ -232,7 +232,7 @@ resource "aws_iam_openid_connect_provider" "oidc_provider" {
   count = local.create && var.enable_irsa && !local.create_outposts_local_cluster ? 1 : 0
 
   client_id_list  = distinct(compact(concat(["sts.${local.dns_suffix}"], var.openid_connect_audiences)))
-  thumbprint_list = concat(data.tls_certificate.this[0].certificates[*].sha1_fingerprint, var.custom_oidc_thumbprints)
+  thumbprint_list = concat([data.tls_certificate.this[0].certificates[0].sha1_fingerprint], var.custom_oidc_thumbprints)
   url             = aws_eks_cluster.this[0].identity[0].oidc[0].issuer
 
   tags = merge(
